@@ -1,4 +1,4 @@
-# Prueba completa de Caudal. La ejecuta GitHub en cada subida (y puedes ejecutarla tú: python tests/smoke.py).
+# Prueba completa de Finanzas. La ejecuta GitHub en cada subida (y puedes ejecutarla tú: python tests/smoke.py).
 # Simula el Worker y los servicios de precios: no necesita internet ni claves.
 import asyncio, functools, http.server, json, os, re, sys, threading
 from pathlib import Path
@@ -23,9 +23,9 @@ def static_checks():
     miss = sorted(u for u in used if u not in ids)
     print('  · ids creados al pintar:', ', '.join(miss[:30])) if miss else ok('Todos los $(id) existen en el HTML')
     ver = re.search(r"APP_VERSION='(v\d+)'", js); rev = re.search(r'APP_REVISION=(\d+)', js)
-    ctx = (ROOT / 'CONTEXTO_CAUDAL.md').read_text(encoding='utf-8') if (ROOT / 'CONTEXTO_CAUDAL.md').exists() else ''
+    ctx = (ROOT / 'CONTEXTO_FINANZAS.md').read_text(encoding='utf-8') if (ROOT / 'CONTEXTO_FINANZAS.md').exists() else ''
     m = re.search(r'Versión actual:\s*\*?\*?(v\d+)', ctx)
-    fail(f'CONTEXTO_CAUDAL.md no coincide con la versión {ver.group(1) if ver else "?"}') if not (ver and m and m.group(1) == ver.group(1)) else ok(f'Versión {ver.group(1)} (revisión {rev.group(1)}) coherente')
+    fail(f'CONTEXTO_FINANZAS.md no coincide con la versión {ver.group(1) if ver else "?"}') if not (ver and m and m.group(1) == ver.group(1)) else ok(f'Versión {ver.group(1)} (revisión {rev.group(1)}) coherente')
     if not re.search(r'\n\s+' + (ver.group(1) if ver else 'v?') + r' · ', js): fail('Falta la línea de la versión en el Registro de cambios')
 
 async def browser_checks():
@@ -117,17 +117,48 @@ async def browser_checks():
         await ev("syncNow()"); await pg.wait_for_timeout(800)
         ok('Un cambio en el móvil llega al portátil') if await ev("state.budgets.super") == 150 else fail('La sincronización no trae los cambios')
         await ctx2.close()
+        print('7b. Sincronización sin pisar datos')
+        ctx3 = await b.new_context(viewport={'width': 390, 'height': 844}, locale='es-ES'); pg3 = await ctx3.new_page()
+        await pg3.route('https://worker.test/**', worker); await pg3.route('https://data-api.binance.vision/**', lambda r: asyncio.ensure_future(r.abort()))
+        await pg3.goto(link); await pg3.wait_for_function("document.body.dataset.ready==='true'"); await pg3.wait_for_timeout(1200)
+        t1 = await ev("state.tx[0].id"); t2 = await ev("state.tx[1].id")
+        await pg3.evaluate(f"change(()=>{{state.tx.find(t=>t.id==='{t1}').note='desde el móvil'}},'')")
+        await ev(f"change(()=>{{state.tx.find(t=>t.id==='{t2}').note='desde el portátil'}},'')")
+        await ev("state.prices.BTC.ts=Date.now()+1e9;save(false)")
+        await pg3.evaluate("syncNow()"); await pg3.wait_for_timeout(900); await ev("syncNow()"); await pg.wait_for_timeout(900); await pg3.evaluate("syncNow()"); await pg3.wait_for_timeout(900)
+        a1 = await ev(f"[state.tx.find(t=>t.id==='{t1}').note,state.tx.find(t=>t.id==='{t2}').note]")
+        a2 = await pg3.evaluate(f"[state.tx.find(t=>t.id==='{t1}').note,state.tx.find(t=>t.id==='{t2}').note]")
+        ok('Cambios a la vez en los dos dispositivos: no se pierde ninguno') if a1 == ['desde el móvil', 'desde el portátil'] and a2 == a1 else fail(f'Conflicto de sincronización: portátil {a1}, móvil {a2}')
+        await ev(f"change(()=>{{state.tx=state.tx.filter(t=>t.id!=='{t1}')}},'')"); await ev("syncNow()"); await pg.wait_for_timeout(900); await pg3.evaluate("syncNow()"); await pg3.wait_for_timeout(900)
+        ok('Borrar en un dispositivo borra en el otro') if await pg3.evaluate(f"!state.tx.some(t=>t.id==='{t1}')") else fail('Lo borrado reaparece')
+        await ctx3.close()
+        print('7c. Funciones nuevas')
+        await ev("go('resumen')")
+        r = await ev("({kpi:document.querySelectorAll('.kpi').length,ins:document.querySelectorAll('.insight').length,donut:!!document.querySelector('.donut circle[data-seg]'),line:!!document.querySelector('.ichart')})")
+        ok('Inicio: indicadores, ideas, donut y gráfico interactivo') if r['kpi'] == 4 and r['ins'] >= 2 and r['donut'] and r['line'] else fail('Inicio incompleto: ' + str(r))
+        n0 = await ev("state.tx.length")
+        await ev("quickAdd()"); await ev("$('q-amt').value='12,50';$('q-desc').value='Café'"); await ev("document.querySelector('[data-act=\"q-save\"]').click()"); await pg.wait_for_timeout(200)
+        ok('Añadir rápido un gasto') if await ev("state.tx.length") == n0 + 1 and await ev("state.tx.at(-1).amount") == -12.5 else fail('El botón + no añade el gasto')
+        await ev("editGoal('')"); await ev("$('g-name').value='Viaje';$('g-target').value='1000';$('g-saved').value='250'"); await ev("document.querySelector('[data-act=\"goal-save\"]').click()"); await pg.wait_for_timeout(200)
+        ok('Objetivo de ahorro creado (25 %)') if await ev("state.goals.length===1&&goalSaved(state.goals[0])===250") else fail('No se crea el objetivo')
+        r = await ev("({f:forecast(),c:cushion(),u:upcoming(60).length})")
+        ok('Previsión, colchón y próximos cargos calculados') if r['f'] and isinstance(r['f']['end'], (int, float)) else fail('Previsión: ' + str(r))
+        await ev("go('movimientos')"); await ev("document.querySelector('.cal button[data-day]:not([disabled])').click()")
+        ok('Calendario de gastos filtra por día') if await ev("!!filt.day") else fail('El calendario no filtra')
+        await ev("document.querySelector('[data-act=\"theme\"]').click()")
+        ok('Cambio de modo claro/oscuro') if await ev("document.documentElement.dataset.theme") in ('light', 'dark') else fail('El tema no cambia')
+        check('Funciones nuevas')
         print('8. Pantallas y botones')
-        for v in ['resumen', 'movimientos', 'inversiones', 'impuestos', 'cuentas', 'ajustes', 'mas']:
+        for v in ['resumen', 'movimientos', 'inversiones', 'objetivos', 'impuestos', 'cuentas', 'ajustes', 'mas']:
             await ev(f"go('{v}')"); check('Vista ' + v)
         ok('Todas las vistas se pintan sin errores')
         n = 0
-        for v in ['resumen', 'movimientos', 'inversiones', 'impuestos', 'cuentas', 'ajustes']:
+        for v in ['resumen', 'movimientos', 'inversiones', 'objetivos', 'impuestos', 'cuentas', 'ajustes']:
             await ev(f"go('{v}')")
             k = await ev("(()=>{let i=0;document.querySelectorAll('main button,main [data-asset],main [data-acc],main [data-op]').forEach(b=>{if(b.offsetParent!==null)b.dataset.t=i++;});return i;})()")
             for i in range(k):
                 info = await ev(f"(()=>{{const b=document.querySelector('[data-t=\"{i}\"]');return b?(b.dataset.act||'')+' '+b.textContent.trim().slice(0,25):null}})()")
-                if not info or re.search(r'import|export|wipe|del|copy|pair|sync-off|worker-test|tax-csv', info): continue
+                if not info or re.search(r'import|export|wipe|del|copy|pair|sync-off|worker-test|tax-csv|menu|theme|hide', info): continue
                 try:
                     await ev(f"document.querySelector('[data-t=\"{i}\"]').click()"); await pg.wait_for_timeout(40); n += 1
                     if await ev("$('modal').open"): await ev("$('modal').close()")

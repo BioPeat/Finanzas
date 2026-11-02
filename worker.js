@@ -1,4 +1,4 @@
-// Caudal · Worker de Cloudflare (gratis). Pégalo entero en el editor del Worker y pulsa «Implementar».
+// Finanzas (antes Caudal) · Worker de Cloudflare (gratis). Pégalo entero en el editor del Worker y pulsa «Implementar».
 // Hace tres cosas: 1) lee los saldos de tus exchanges con claves de SOLO LECTURA guardadas como secretos,
 // 2) trae precios (cripto, ETF, fondos, divisas) y precios históricos para los impuestos,
 // 3) guarda la copia CIFRADA de la app para sincronizar el portátil y el móvil (no puede leerla).

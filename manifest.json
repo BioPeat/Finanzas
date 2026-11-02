@@ -1,13 +1,13 @@
 {
-  "name": "Caudal",
-  "short_name": "Caudal",
-  "description": "Tus finanzas en un solo sitio: cuentas, gastos, inversiones, cripto e impuestos.",
+  "name": "Finanzas",
+  "short_name": "Finanzas",
+  "description": "Tus finanzas en un solo sitio: cuentas, gastos, inversiones, cripto, objetivos e impuestos.",
   "start_url": "./",
   "scope": "./",
   "id": "./",
   "display": "standalone",
-  "background_color": "#f5f3ee",
-  "theme_color": "#1b1a17",
+  "background_color": "#0c1424",
+  "theme_color": "#0c1424",
   "lang": "es",
   "icons": [
     {
@@ -30,6 +30,10 @@
     }
   ],
   "shortcuts": [
+    {
+      "name": "Añadir gasto",
+      "url": "./#quick"
+    },
     {
       "name": "Movimientos",
       "url": "./#movimientos"

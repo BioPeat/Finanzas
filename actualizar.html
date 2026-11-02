@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Caudal · aplicar cambios de la IA</title>
+<title>Finanzas · aplicar cambios de la IA</title>
 <style>
-:root{--bg:#f5f3ee;--panel:#fffefb;--line:#e2ddd2;--ink:#1b1a17;--ink2:#58544b;--up:#18794e;--down:#b4321f;--warn:#a8650b;--brand:#0f5c49}
-@media (prefers-color-scheme:dark){:root{--bg:#121211;--panel:#1a1a18;--line:#2d2c28;--ink:#ecebe6;--ink2:#b3afa4;--up:#4cbf86;--down:#e2715f;--warn:#e0a548;--brand:#5fb39a}}
+:root{--bg:#f3f5fa;--panel:#fff;--line:#e4e9f2;--ink:#0f172a;--ink2:#475569;--up:#059669;--down:#dc2626;--warn:#d97706;--brand:#b7791f}
+@media (prefers-color-scheme:dark){:root{--bg:#0c1424;--panel:#141f36;--line:#22314f;--ink:#eef2f9;--ink2:#a9b6cc;--up:#34d399;--down:#f87171;--warn:#fbbf24;--brand:#e8b75a}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
 main{max-width:860px;margin:0 auto;padding:20px 16px 60px}h1{font:600 26px Georgia,serif;margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin:14px 0}
 .muted{color:var(--ink2);font-size:13.5px}button,.btn{display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 14px inherit;cursor:pointer;margin:4px 6px 4px 0}
-button.primary{background:var(--brand);border-color:var(--brand);color:#fff}button:disabled{opacity:.5}
+button.primary{background:var(--brand);border-color:var(--brand);color:#1a1305}button:disabled{opacity:.5}
 textarea,input{width:100%;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);padding:10px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace}textarea{min-height:220px}
 ul.checks{list-style:none;padding:0;margin:8px 0}ul.checks li{padding:4px 0;border-bottom:1px solid var(--line)}.ok{color:var(--up)}.bad{color:var(--down)}.warn{color:var(--warn)}
 .big{font:600 20px Georgia,serif;margin:4px 0 10px}details summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;font-size:12px;max-height:300px;overflow:auto}ol li{margin:4px 0}
 </style></head><body><main>
 <h1>Aplicar cambios de la IA</h1><p class="muted" id="cur">Cargando la versión actual…</p>
 <details class="card"><summary>Cómo se usa (léelo una vez)</summary><ol>
-<li><b>Paso 1:</b> escribe 1-3 palabras de lo que quieres cambiar y descarga el archivo enfocado. Adjúntalo en un chat nuevo de tu Gem «Caudal Dev» (o del proyecto de Claude) con tu petición.</li>
+<li><b>Paso 1:</b> escribe 1-3 palabras de lo que quieres cambiar y descarga el archivo enfocado. Adjúntalo en un chat nuevo de tu Gem «Finanzas Dev» (o del proyecto de Claude) con tu petición.</li>
 <li><b>Paso 2:</b> pega la respuesta de la IA y pulsa «Aplicar y comprobar». Se aplica sobre una copia y se prueba la app entera en una caja aislada: tus datos reales no se tocan.</li>
 <li><b>Si sale rojo:</b> «Copiar mensaje para la IA» → pégalo en el mismo chat → pega aquí su respuesta nueva. Si la IA trae solo los bloques corregidos («@@@ SOLO CORREGIDOS»), se combinan con los anteriores.</li>
 <li><b>Si la IA lo dividió en partes:</b> cuando la parte 1 salga verde, pulsa «Aplicar la siguiente parte encima» y pega la parte 2.</li>
-<li><b>Si sale verde:</b> descarga el index.html nuevo, cópialo en tu carpeta del repositorio (Reemplazar) y en GitHub Desktop: Commit to main → Push origin. GitHub vuelve a probarlo todo y actualiza solo CONTEXTO y MAPA.</li></ol></details>
+<li><b>Si sale verde:</b> descarga el index.html nuevo, cópialo en tu carpeta del repositorio (Reemplazar) y en GitHub Desktop: Commit to main → Push origin. GitHub vuelve a probarlo todo y actualiza solo CONTEXTO_FINANZAS y MAPA.</li></ol></details>
 <div class="card"><h2>Paso 1 · Archivo para tu IA</h2>
 <input type="text" id="kw" placeholder="Ej.: presupuestos, impuestos, gráfica">
 <button class="primary" id="dl-focus">Descargar archivo enfocado (recomendado)</button><button id="dl-light">Archivo sin estilos</button><button id="dl-full">Archivo completo</button>
@@ -35,7 +35,7 @@ ul.checks{list-style:none;padding:0;margin:8px 0}ul.checks li{padding:4px 0;bord
 "use strict";
 const $=id=>document.getElementById(id);
 // Si alguno de estos textos desaparece, el cambio se rechaza (protegen tus datos guardados).
-const PROTECTED=["STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function taxCompute(","LOCAL_ONLY","'caudal:'"];
+const PROTECTED=["STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function stampChanges(","function taxCompute(","LOCAL_ONLY","'caudal:'"];
 let pub='',current='',result='',errText='',reviewText='',prev=[],parts=1;
 const ver=t=>+((t.match(/APP_VERSION='v(\d+)'/)||[])[1]||0),rev=t=>+((t.match(/APP_REVISION=(\d+)/)||[])[1]||0);
 function setCurrent(t,src){pub=t;current=t;parts=1;$('cur').innerHTML='Versión actual: <b>v'+ver(t)+'</b> · '+src;}
@@ -53,16 +53,16 @@ function focused(t,words){
   if(skip)out.push('/* … '+skip+' trozos omitidos … */');
   return {text:lightVersion(t.slice(0,s))+'\n/* [ARCHIVO ENFOCADO para «'+words+'»: '+kept+' de '+ch.length+' trozos. Solo puedes BUSCAR texto que veas aquí. Si falta una función, dile a Diego su nombre.] */\n'+out.join('\n')+'\n'+t.slice(e),kept,total:ch.length};
 }
-$('dl-focus').onclick=()=>{if(!current)return alert('Primero carga index.html');const w=$('kw').value.trim();if(w.length<3)return alert('Escribe 1-3 palabras de lo que quieres cambiar.');const f=focused(current,w);$('focus-info').textContent='Archivo enfocado: '+Math.round(f.text.length/1024)+' KB ('+f.kept+' de '+f.total+' trozos).';download('Caudal_enfocado_v'+ver(current)+'.txt',f.text);};
-$('dl-light').onclick=()=>current&&download('Caudal_sin_estilos_v'+ver(current)+'.txt',lightVersion(current));
-$('dl-full').onclick=()=>current&&download('Caudal_completo_v'+ver(current)+'.txt',current);
+$('dl-focus').onclick=()=>{if(!current)return alert('Primero carga index.html');const w=$('kw').value.trim();if(w.length<3)return alert('Escribe 1-3 palabras de lo que quieres cambiar.');const f=focused(current,w);$('focus-info').textContent='Archivo enfocado: '+Math.round(f.text.length/1024)+' KB ('+f.kept+' de '+f.total+' trozos).';download('Finanzas_enfocado_v'+ver(current)+'.txt',f.text);};
+$('dl-light').onclick=()=>current&&download('Finanzas_sin_estilos_v'+ver(current)+'.txt',lightVersion(current));
+$('dl-full').onclick=()=>current&&download('Finanzas_completo_v'+ver(current)+'.txt',current);
 function unfence(s){return s.replace(/^\s*```[a-zA-Z]*[ \t]*\n/,'').replace(/\n[ \t]*```\s*$/,'');}
 function parse(txt){txt=txt.replace(/\r\n/g,'\n');const re=/@@@ BUSCAR[ \t]*(\d*)[^\n]*\n([\s\S]*?)\n@@@ CAMBIAR POR[^\n]*\n([\s\S]*?)\n?@@@ FIN/g,out=[];let m,i=0;while((m=re.exec(txt))){i++;out.push({n:m[1]?+m[1]:i,find:unfence(m[2]),repl:unfence(m[3])});}out.partial=/^[ \t]*@@@ SOLO CORREGIDOS/mi.test(txt);return out;}
 function count(h,n){if(!n)return 0;let c=0,i=0;while((i=h.indexOf(n,i))>=0){c++;i+=n.length;}return c;}
 function flex(h,needle){const n=needle.trim();if(n.length<6)return [];const e=c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');let re;try{re=new RegExp(n.split(/\s+/).map(p=>[...p].map(c=>/['‘’]/.test(c)?"['‘’]":/["“”]/.test(c)?'["“”]':e(c)).join('')).join('\\s+'),'g');}catch(x){return [];}const out=[];let m;while((m=re.exec(h))&&out.length<3)out.push([m.index,m.index+m[0].length]);return out;}
 // Ejecuta la app modificada en una caja aislada (sin acceso a tus datos) y la recorre entera.
 function sandbox(html){return new Promise(res=>{
-  const probe='<script>window.__e=[];addEventListener("error",e=>__e.push(String(e.message)));addEventListener("load",()=>setTimeout(()=>{try{state=migrate({accounts:[{id:"a",name:"Banco",kind:"bank"},{id:"b",name:"Exchange",kind:"exchange"}],tx:[{id:"t1",acc:"a",date:"2026-01-05",desc:"COMPRA MERCADONA, MADRID",amount:-20,bal:100,cat:"super"},{id:"t2",acc:"a",date:"2026-01-06",desc:"TRANSFERENCIA DE EMPRESA, CONCEPTO NOMINA",amount:1500,bal:1600,cat:"nomina"}],ledger:[{id:"l1",acc:"b",t:"2025-01-01 10:00:00",asset:"BTC",change:0.1,kind:"trade",ref:"r"},{id:"l2",acc:"b",t:"2025-01-01 10:00:00",asset:"EUR",change:-5000,kind:"trade",ref:"r"},{id:"l3",acc:"b",t:"2025-06-01 10:00:00",asset:"BTC",change:-0.05,kind:"trade",ref:"s"},{id:"l4",acc:"b",t:"2025-06-01 10:00:00",asset:"EUR",change:3000,kind:"trade",ref:"s"}],derivs:[{id:"d",instr:"BTC perp",type:"perpetuo",side:"long",size:0.01,entry:60000,mark:65000,quote:"USD"}],budgets:{super:100},prices:{BTC:{eur:60000,usd:65000,chg:1}}});for(const v of ["resumen","movimientos","inversiones","impuestos","cuentas","ajustes","mas"])go(v);}catch(x){__e.push("Al navegar: "+x.message)}parent.postMessage({caudalTest:1,ready:document.body.dataset.ready,errors:__e},"*")},900));<\/script>';
+  const probe='<script>window.__e=[];addEventListener("error",e=>__e.push(String(e.message)));addEventListener("load",()=>setTimeout(()=>{try{state=migrate({accounts:[{id:"a",name:"Banco",kind:"bank"},{id:"b",name:"Exchange",kind:"exchange"}],tx:[{id:"t1",acc:"a",date:"2026-01-05",desc:"COMPRA MERCADONA, MADRID",amount:-20,bal:100,cat:"super"},{id:"t2",acc:"a",date:"2026-01-06",desc:"TRANSFERENCIA DE EMPRESA, CONCEPTO NOMINA",amount:1500,bal:1600,cat:"nomina"}],ledger:[{id:"l1",acc:"b",t:"2025-01-01 10:00:00",asset:"BTC",change:0.1,kind:"trade",ref:"r"},{id:"l2",acc:"b",t:"2025-01-01 10:00:00",asset:"EUR",change:-5000,kind:"trade",ref:"r"},{id:"l3",acc:"b",t:"2025-06-01 10:00:00",asset:"BTC",change:-0.05,kind:"trade",ref:"s"},{id:"l4",acc:"b",t:"2025-06-01 10:00:00",asset:"EUR",change:3000,kind:"trade",ref:"s"}],derivs:[{id:"d",instr:"BTC perp",type:"perpetuo",side:"long",size:0.01,entry:60000,mark:65000,quote:"USD"}],budgets:{super:100},goals:[{id:"g",name:"Viaje",target:1000,saved:200}],prices:{BTC:{eur:60000,usd:65000,chg:1}}});for(const v of ["resumen","movimientos","inversiones","objetivos","impuestos","cuentas","ajustes","mas"])go(v);quickAdd();$("modal").close();}catch(x){__e.push("Al navegar: "+x.message)}parent.postMessage({caudalTest:1,ready:document.body.dataset.ready,errors:__e},"*")},900));<\/script>';
   const f=document.createElement('iframe');f.sandbox='allow-scripts';f.style.display='none';
   const done=d=>{removeEventListener('message',on);f.remove();res(d);};const on=e=>{if(e.data&&e.data.caudalTest)done(e.data);};
   addEventListener('message',on);setTimeout(()=>done({ready:'',errors:['La app no arrancó en 8 s']}),8000);

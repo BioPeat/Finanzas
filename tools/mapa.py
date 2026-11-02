@@ -2,7 +2,7 @@
 import re, pathlib
 src = pathlib.Path('index.html').read_text(encoding='utf-8').split('\n')
 v = next((re.search(r"APP_VERSION='(v\d+)'", l).group(1) for l in src if "APP_VERSION='" in l), '?')
-out = [f'# MAPA DEL CÓDIGO · Caudal {v}', '', 'Generado solo. Sirve para orientarse: busca siempre por el nombre de la función, las líneas cambian.', '']
+out = [f'# MAPA DEL CÓDIGO · Finanzas {v}', '', 'Generado solo. Sirve para orientarse: busca siempre por el nombre de la función, las líneas cambian.', '']
 for i, l in enumerate(src, 1):
     s = re.match(r'\s*// ===== (.+?) =====', l)
     if s: out += ['', f'## {s.group(1)} (línea {i})']; continue

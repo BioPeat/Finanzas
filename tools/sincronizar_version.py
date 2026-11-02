@@ -1,9 +1,9 @@
-# Mantiene CONTEXTO_CAUDAL.md al día con index.html. Lo ejecuta GitHub solo en cada subida.
+# Mantiene CONTEXTO_FINANZAS.md al día con index.html. Lo ejecuta GitHub solo en cada subida.
 #  - «Versión actual» y «revisión de datos» = APP_VERSION y APP_REVISION.
 #  - «## 9. Historial»: las 8 últimas líneas del Registro de cambios de index.html.
 import re, pathlib
 idx = pathlib.Path('index.html').read_text(encoding='utf-8')
-p = pathlib.Path('CONTEXTO_CAUDAL.md'); ctx = p.read_text(encoding='utf-8')
+p = pathlib.Path('CONTEXTO_FINANZAS.md'); ctx = p.read_text(encoding='utf-8')
 v = re.search(r"APP_VERSION\s*=\s*.(v\d+)", idx); r = re.search(r"APP_REVISION\s*=\s*(\d+)", idx)
 new = re.sub(r"(\*\*Versión actual:\s*)v\d+(\*\*)", lambda m: m.group(1) + v.group(1) + m.group(2), ctx, count=1)
 if r: new = re.sub(r"(revisión de datos\s*)\d+", lambda m: m.group(1) + r.group(1), new, count=1)
