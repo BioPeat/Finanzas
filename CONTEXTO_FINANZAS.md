@@ -1,6 +1,6 @@
 # CONTEXTO · Finanzas
 
-**Versión actual: v2** (revisión de datos 2)
+**Versión actual: v3** (revisión de datos 2)
 
 Finanzas (antes «Caudal») es la app personal de finanzas de Diego: un panel en el portátil y una app en el móvil, en la misma web. Reúne cuenta corriente, gastos, ingresos, inversiones, cripto, derivados e impuestos. Solo la usa Diego (no es pública), pero el repositorio sí es público: **nunca** van datos, claves ni nombres reales en el código.
 
@@ -47,18 +47,17 @@ Finanzas (antes «Caudal») es la app personal de finanzas de Diego: un panel en
 - Siempre «orientativo, no es asesoramiento fiscal».
 
 ## 6. Aspecto
-- Azul noche y dorado (`--bg #0c1424`, `--brand #e8b75a`) con modo claro (`#f3f5fa`, dorado `#b7791f`). Verde = sube, rojo = baja. Tarjetas redondeadas, cifras tabulares, iconos de línea (`ico()`), sin emojis como iconos.
+- Estilo de app de banco + inversión (Revolut, Trade Republic): fondo azul noche (#0a1020), tarjetas planas, un solo acento dorado (#e8b75a) y verde/rojo solo para subir/bajar. Modo claro. Cifras grandes con los céntimos más pequeños (moneyBig). Iconos de línea (ico()), sin emojis.
 - Logo: tres barras doradas que suben y una línea verde de tendencia sobre fondo azul noche.
-- Portátil: barra lateral + rejilla de 12 columnas. Móvil (<1024 px): barra superior (menú, sincronización, ocultar importes, tema), menú lateral y pestañas abajo (Inicio, Gastos, +, Inversiones, Más).
+- Portátil: barra lateral + rejilla de 12 columnas. Móvil (<1024 px): barra superior mínima (sincronización, ocultar importes, tema) y 4 pestañas abajo: Inicio, Gastos, Inversiones, Más. Sin botón «+»: los gastos llegan al importar el extracto. Las ventanas son hojas que suben desde abajo.
+- Gráficos táctiles (arrastrar el dedo): svgLine (patrimonio e inversiones), svgCompare (gasto acumulado del mes frente al pasado), svgDays (gasto por día), svgMonths (12 meses), donut.
 
 ## 7. Pantallas
-- **Inicio:** patrimonio con gráfico interactivo (1M, 6M, 1A, Todo) y reparto; «Lo importante» (ritmo de gasto, previsión, colchón, mayor gasto, próximos cargos, suscripciones); 4 indicadores (disponible, gastado este mes vs. mes pasado, previsión a fin de mes, colchón en meses); donut de gastos del mes; ingresos y gastos de 12 meses; próximos cargos; presupuestos; objetivos; últimos movimientos; dónde más gastas; avisos.
-- **Movimientos:** búsqueda, filtros y chips de categoría, lista por días, calendario de gastos del mes (toca un día), resumen. Tocar un movimiento = cambiar categoría (aprende para el mismo comercio).
-- **Botón +:** gasto o ingreso rápido (crea una cuenta «Efectivo» si hace falta), importar, operación de inversión u objetivo.
-- **Inversiones:** valor, hoy, coste FIFO y resultado; donut de reparto; por activo, por cuenta u operaciones; derivados.
-- **Objetivos:** metas de ahorro (anillo de progreso, cuánto apartar al mes) y presupuestos por categoría con la media de 3 meses.
-- **Impuestos**, **Cuentas** (tarjetas por tipo) y **Ajustes** (tema, moneda, Worker, sincronización, reglas, copia).
-- Cálculos: `liquidity`, `cushion`, `pace`, `forecast`, `upcoming`, `topMerchants`, `dailySpend`, `insights`.
+- **Inicio:** patrimonio con gráfica y periodos (1S, 1M, 6M, 1A, Máx); tarjeta del mes (gastado, comparación con el mes pasado, «puedes gastar X € al día», ingresos, previsión, colchón); tarjetas de cuentas deslizables; «Lo importante» en fichas; en qué gastas; ingresos y gastos 12 meses; próximos cargos; últimos movimientos; avisos.
+- **Gastos:** meses en botones, gastado/ingresos/balance, barras por día (tocar un día filtra), categorías (tocar filtra), buscador, tipo (gastos, ingresos, todo, internos) y lista por días. Tocar un movimiento = cambiar categoría (aprende para el mismo comercio).
+- **Inversiones:** valor, cambio de hoy y resultado total; gráfica del valor (fotos diarias); reparto; activos con color propio, 24 h y resultado; por cuenta; historial; derivados.
+- **Más:** Objetivos (metas y presupuestos), Impuestos, Cuentas, Importar, Ajustes, Copia; sincronizar y apuntar un gasto en efectivo (quickAdd).
+- Cálculos: liquidity, cushion, pace, forecast, safeToSpend, upcoming, topMerchants, dailySpend, insights, invSeries.
 
 ## 8. Cómo está hecho el código
 - Un solo `index.html` con un único `<script id="app">` y un `<style id="app-style">` que acaba en `</style><!--FIN-CSS-->`.
@@ -66,6 +65,7 @@ Finanzas (antes «Caudal») es la app personal de finanzas de Diego: un panel en
 - `actualizar.html` aplica los cambios de la IA y prueba la app en una caja aislada. `tests/smoke.py` prueba todo en GitHub.
 
 ## 9. Historial (una línea por versión, máximo 8)
+- **v3 · Copilot:** Rediseño completo tipo app de banco e inversión: pestañas Inicio, Gastos, Inversiones y Más; patrimonio con gráfica táctil, tarjetas de cuentas, gasto del mes frente al anterior, «puedes gastar X al día», gasto por día, cartera con colores por activo, hojas que suben desde abajo en el móvil y app instalable de nuevo.
 - **v2 · Copilot:** Nueva app «Finanzas»: diseño azul noche y dorado con modo claro, menú lateral, botón rápido para añadir, gráficos interactivos, ideas del mes, previsión, colchón, próximos cargos, objetivos de ahorro, calendario de gastos y sincronización automática por cambios (sin pisar datos entre dispositivos).
 - **v1 · Copilot:** Primera versión: cuentas, movimientos con categorías automáticas, importación de Santander/Revolut/Binance/Kraken/KuCoin, cartera con precios en vivo, derivados, fiscalidad FIFO con borrador, presupuestos, alertas, sincronización cifrada y conexión con exchanges por un Worker.
 

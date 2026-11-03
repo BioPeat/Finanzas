@@ -30,10 +30,10 @@ Lo usan el Gem de Gemini «Finanzas Dev» y el proyecto de Claude «Finanzas Dev
 
 ## 4. Aspecto
 - Paleta azul noche y dorado (como BioPeat), con modo claro: usa siempre las variables `--bg`, `--panel`, `--panel2`, `--line`, `--ink`, `--ink2`, `--ink3`, `--brand`, `--up`, `--down`, `--warn`, `--c1…--c8`. Comprueba siempre los dos modos (`html[data-theme=light]`).
-- Tarjetas `.panel` (radio `var(--r)`), indicadores `.kpi`, listas `.item` con avatar `.av`, chips `.chip`. Sin emojis como iconos: usa `ico(nombre)` y añade iconos de línea a `ICON`.
-- Gráficos: `svgLine`, `svgMonths`, `donut` + `bindCharts()` (se enlazan solos en `afterRender`). Son interactivos: al tocar se ve el valor.
+- Tarjetas `.panel` (radio `var(--r)`), cabecera grande `.hero` con `moneyBig()`, tarjetas de cuenta `.acard`, carrusel `.strip`, fichas `.icard`, filas de categoría `catRow()`, activos `.hold`, listas `.item` con avatar redondo `.av`, chips `.chip`. Sin emojis como iconos: usa `ico(nombre)` y añade iconos de línea a `ICON`.
+- Gráficos: `svgLine`, `svgCompare`, `svgDays`, `svgMonths`, `donut` + `bindCharts()` (se enlazan solos en `afterRender`). Son táctiles: al tocar o arrastrar se ve el valor. No pongas texto dentro de SVG estirados: usa `<div class="axis">`.
 - Cifras con `money()`, `nf()`, `pct()`; títulos de panel con `<h2>` dentro de `.panel` (salen en mayúsculas pequeñas).
-- Móvil: barra superior con menú lateral (`openDrawer`), pestañas abajo con botón + central (`quickAdd`). Botones de al menos 40 px; nada importante solo con «hover». Comprueba por debajo de 1024 px.
+- Móvil: barra superior mínima y 4 pestañas abajo (Inicio, Gastos, Inversiones, Más). No hay botón «+» (los gastos llegan del extracto; `quickAdd` solo desde «Más» para efectivo). Las ventanas (`modal`) son hojas que suben desde abajo. Botones de al menos 40 px; nada importante solo con «hover». Comprueba por debajo de 1024 px.
 - Textos directos, en segunda persona, sin relleno: cifras primero.
 
 ## 5. En cada cambio
