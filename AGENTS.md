@@ -1,50 +1,47 @@
 # AGENTS.md · Reglas para la IA que programa Finanzas
 
-Lo usan el Gem de Gemini «Finanzas Dev» y el proyecto de Claude «Finanzas Dev». Responde siempre en español de España, de forma clara. Diego no programa: nunca le pidas que edite código a mano.
+Lo usan el Gem de Gemini «Finanzas Dev» y el proyecto de Claude «Finanzas Dev». Responde en español de España. Diego no programa: no le pidas que edite código manualmente.
 
-## 1. Flujo de cambios
-1. Diego descarga desde `actualizar.html` un archivo enfocado y lo adjunta a la IA.
-2. Entrega bloques `@@@ BUSCAR n` / `@@@ CAMBIAR POR` / `@@@ FIN` dentro de un único bloque de código.
-3. `actualizar.html` aplica los bloques sobre una copia, protege los datos y recorre las pantallas en una caja aislada.
-4. Si Diego pega un mensaje que empieza por **CORREGIR**, devuelve solo los bloques corregidos con el mismo número y empieza por `@@@ SOLO CORREGIDOS`.
-5. GitHub ejecuta `tests/smoke.py` y actualiza `CONTEXTO_FINANZAS.md` y `MAPA_DEL_CODIGO.md`.
+## 1. Flujo
+1. Diego descarga desde `actualizar.html` un archivo enfocado.
+2. La IA devuelve bloques `@@@ BUSCAR n` / `@@@ CAMBIAR POR` / `@@@ FIN`.
+3. `actualizar.html` aplica y prueba sobre una copia.
+4. GitHub ejecuta `tests/smoke.py`, `tests/worker_smoke.mjs` y regenera contexto/mapa.
 
-## 2. Reglas técnicas
-- Todo el JavaScript va dentro de `<script id="app">`; todo el CSS dentro de `<style id="app-style">`. No añadas otro script o style.
-- Define cada función una sola vez. No reasignes ni envuelvas funciones existentes.
-- Sube `APP_VERSION` exactamente 1 y añade `   vNN · Gemini · resumen` al Registro de cambios. Sube `APP_REVISION` solo si cambia el modelo de datos y adapta `migrate()`.
-- Todo cambio de datos pasa por `change(()=>{…},'mensaje')`. Los cachés usan `save(false)`.
-- No cambies `STORE='caudal_v1'`, `migrate`, `save`, `render`, `syncNow`, `mergeStates`, `stampChanges`, `taxCompute`, `LOCAL_ONLY` ni el prefijo `'caudal:'`.
-- Una lista sincronizada nueva con `id` va en `LISTS`; un mapa en `MAPS`; un ajuste compartido en `SHARED`.
-- Nunca pongas datos personales, claves API o nombres reales en el repositorio público.
-- Fechas: `AAAA-MM-DD` o `AAAA-MM-DD HH:MM:SS`. Importes base en euros.
-- No prometas exactitud fiscal ni asesoramiento: los cálculos son orientativos y deben poder auditarse.
+## 2. Reglas que protegen datos
+- JavaScript dentro de `<script id="app">`; CSS dentro de `<style id="app-style">`.
+- Una sola definición de cada función; nada de parches, reasignaciones o scripts paralelos.
+- Sube `APP_VERSION` exactamente 1 y añade una línea al Registro de cambios. `APP_REVISION` solo cambia si cambia el modelo de datos y existe migración.
+- Todo cambio de usuario pasa por `change()`. Cachés: `save(false)`.
+- No cambies `STORE='caudal_v1'`, el prefijo `caudal:`, `X-Caudal-Token`, el KV `CAUDAL`, `migrate`, `save`, `render`, `syncNow`, `mergeStates`, `stampChanges`, `taxCompute` ni `LOCAL_ONLY`.
+- Nunca incluyas datos personales, extractos, claves, TOKEN ni enlaces de vinculación.
+- El TOKEN puede permanecer en `state.settings.token`, pero **nunca se imprime en HTML**. `set-token` debe ser `type="password"`, vacío y conservar el secreto existente cuando no se introduce otro.
 
-## 3. Regla obligatoria: cero servicios de pago
-- Primero usa procesamiento local, importación de extractos o APIs oficiales/públicas desde la app o el Worker ya existente.
-- No añadas servicios de pago, pruebas que luego cobren, suscripciones ni planes «freemium» que necesiten tarjeta.
-- Si una conexión bancaria o de bróker no tiene API personal oficial y gratuita, mantenla por importación CSV/XLSX/OFX/QFX/QIF. Explícalo sin prometer automatización.
-- Un servicio externo solo se admite si es gratuito. Si requiere configuración, actualiza `GUIA_PASO_A_PASO.txt` con instrucciones de clic a clic para principiantes.
-- Claves de exchanges: siempre solo lectura y solo como secretos de Cloudflare. Nunca permisos de operar, transferir o retirar.
+## 3. Cero servicios de pago
+- Prioridad: procesamiento local, extractos y APIs oficiales/públicas gratuitas.
+- Prohibidos suscripciones, tarjetas, pruebas de pago y agregadores bancarios comerciales.
+- Si no hay API personal oficial y gratuita, se mantiene CSV/XLSX/OFX/QFX/QIF.
+- Claves de exchange: solo lectura y solo como secretos del Worker. Nunca operar, transferir o retirar.
 
 ## 4. Datos e integraciones
-- Bancos: `state.tx`. Importación universal mediante `readFile`, `detect`, `parseBank`, `openMapper`, `parseOFX` y `parseQIF`; sin duplicados.
-- Inversiones: `state.ledger`; operaciones o snapshots de posiciones. Los snapshots sustituyen el snapshot anterior de la misma fuente y no sirven por sí solos para impuestos.
-- APIs automáticas oficiales en `worker.js`: Binance, Kraken, KuCoin, OKX y Bybit. Añade conectores nuevos en `EXCHANGES`, aísla fallos y conserva los demás.
-- Precios: `state.prices`; históricos: `state.hist`. Las llamadas externas deben tener timeout y fallback.
-- Gráficos: `assetDetail`, `tvSymbol` y `tradingViewURL`. TradingView es visual; la app sigue siendo responsable de saldos y costes.
-- Sincronización: copia cifrada AES-GCM. Nunca subas texto financiero sin cifrar.
+- Bancos: `state.tx`; inversión: `state.ledger`; snapshots sustituyen la misma fuente.
+- Worker: Binance, Kraken, KuCoin, OKX y Bybit; fallos aislados y timeout.
+- Precios en `state.prices`; históricos en `state.hist`; TradingView solo visual.
+- Sincronización AES-GCM; el Worker recibe un blob ilegible.
+- Fiscalidad siempre orientativa, auditable y con límites explicados.
 
-## 5. Diseño v4
-- Estética deliberada, no «AI slop»: jerarquía tipográfica, espacio, alineación y una acción principal; evita degradados decorativos, tarjetas repetidas sin función, brillos, blobs, emojis y textos de relleno.
-- Sigue principios públicos de Apple: claridad, deferencia al contenido, profundidad solo cuando ayuda, adaptación real al dispositivo, controles táctiles, contraste, estados perceptibles y respeto por `prefers-reduced-motion`.
-- Paleta: usa variables (`--bg`, `--panel`, `--ink`, `--brand`, `--up`, `--down`, etc.). Comprueba modo claro y oscuro.
-- Escritorio: barra lateral y panel analítico denso. Móvil: `vResumenMobile`, cuatro pestañas abajo y menú lateral `drawer`; no copies el dashboard de escritorio en una columna.
-- Táctil: objetivo mínimo de 44 px, feedback de pulsación, nada importante solo en hover. Animaciones cortas y funcionales; sin animación si el usuario reduce movimiento.
-- Iconos de línea con `ico()`, no emojis. Cifras con `money()`, `nf()` y `pct()`.
+## 5. Diseño v5
+- Prioridades: patrimonio; separación cuentas/inversiones; subida/bajada; resultado acumulado de inversión; ingresos y gastos.
+- Modo oscuro por defecto, cambio sencillo.
+- Ordenador: dashboard denso con KPIs y detalle simultáneo. Móvil: vista específica para pulgar, no el escritorio apilado.
+- Navegación móvil principal: Inicio, Gastos, Invertir y Cuentas. Impuestos y Plan son secundarios. No reintroduzcas una pantalla «Más» redundante.
+- Gestos existentes: borde izquierdo → menú; horizontal → vistas principales; hoja hacia abajo → cerrar. Todo gesto necesita alternativa visible por botón.
+- Targets de 44 px cuando sea posible, foco visible, teclado, contraste y `prefers-reduced-motion`.
+- Animación breve para continuidad y feedback, no decoración. Sin brillos, blobs, degradados gratuitos, emojis ni tarjetas repetidas sin función.
+- Evita porcentajes engañosos con bases casi cero. Distingue rentabilidad de movimientos de efectivo siempre que los datos lo permitan.
 
 ## 6. En cada entrega
-- Máximo 10 bloques y unas 200 líneas; divide en partes si hace falta.
-- Comprueba sintaxis, modo claro/oscuro, escritorio/móvil, teclado, menú, importación, sincronización, activos y todas las vistas.
-- Actualiza pruebas cuando añadas una función importante.
-- No digas que una API real funciona si solo la has probado con respuestas simuladas; indícalo expresamente.
+- Actualiza pruebas cuando cambie una función importante.
+- Comprueba escritorio y móvil, temas, teclado, gestos, Añadir, importación, precios, activos, sincronización y todas las vistas.
+- No afirmes que una API real funciona si solo se ha simulado.
+- Mantén `actualizar.html`, contexto, mapa, guía e instrucciones alineados con la versión.

@@ -2,7 +2,7 @@
 // 1) Saldos mediante APIs OFICIALES y claves de SOLO LECTURA; 2) precios; 3) copia cifrada entre dispositivos.
 // Obligatorio: TOKEN y KV enlazado como CAUDAL. Recomendado: ALLOWED_ORIGIN (p. ej. https://usuario.github.io).
 // Exchanges opcionales: BINANCE_*, KRAKEN_*, KUCOIN_*, OKX_* y BYBIT_* (consulta README.md).
-const W_VERSION = 'w2';
+const W_VERSION = 'w3';
 const enc = new TextEncoder();
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b)));
@@ -15,7 +15,7 @@ async function hmac(hash, key, msg) {
 async function getJSON(url, init = {}) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 18000);
   try {
-    const r = await fetch(url, { ...init, signal: ctl.signal, headers: { 'User-Agent': 'Finanzas/4 read-only', ...(init.headers || {}) } });
+    const r = await fetch(url, { ...init, signal: ctl.signal, headers: { 'User-Agent': 'Finanzas/5 read-only', ...(init.headers || {}) } });
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) { }
     if (!r.ok) throw new Error((j && (j.msg || j.message || j.retMsg || j.error_description || (Array.isArray(j.error) && j.error.join(', ')))) || ('HTTP ' + r.status));
     return j;

@@ -1,81 +1,88 @@
 # CONTEXTO · Finanzas
 
-**Versión actual: v4** (revisión de datos 2)
+**Versión actual: v5** (revisión de datos 2)
 
-Finanzas es la app personal de Diego: panel analítico en portátil y app móvil en la misma PWA. Reúne bancos, tarjetas, efectivo, inversión tradicional, cripto, derivados, objetivos e impuestos. El repositorio es público; nunca contiene datos personales ni claves.
+Finanzas es la PWA personal de Diego para reunir bancos, efectivo, inversión tradicional, cripto y derivados sin servicios de pago. El repositorio es público y nunca contiene datos personales ni secretos.
 
-## 1. Criterios del usuario
-- Español de España y pasos muy sencillos. Diego no programa.
-- Automatizar todo lo posible con procesamiento local, APIs oficiales gratuitas y el Worker de Cloudflare ya montado.
-- Prohibidos servicios de pago. Si un banco o bróker no ofrece una API personal oficial y gratuita, se usa importación de extractos.
-- Sin PIN; datos cifrados y sincronizados entre portátil y móvil. Moneda visible EUR, USD o BTC.
-- Cada operación se conserva para auditoría e impuestos; el resumen no debe abrumar.
+## 1. Prioridades del usuario
+- Ver patrimonio total separado entre cuentas/efectivo e inversiones.
+- Saber si sube o baja y ver rentabilidad acumulada y diaria de inversiones.
+- Ver ingresos, gastos, balance mensual, próximos cargos y avisos útiles.
+- Modo oscuro por defecto, cambio inmediato a claro/auto.
+- Escritorio y móvil deben sentirse distintos.
+- Impuestos en segundo plano; «Objetivos» se rehízo como Plan opcional.
+- Español claro para una persona no técnica.
 
-## 2. Fuentes de datos
+## 2. Fuentes
 | Fuente | Método | Automático |
 |---|---|---|
-| Cualquier banco/tarjeta | CSV, XLSX, OFX, QFX o QIF; detector o selector de columnas | Importación |
-| Cualquier bróker/app | Historial CSV/XLSX con selector de columnas, o snapshot de posiciones | Importación |
-| Binance | API oficial: spot, funding, Earn y futuros USDⓈ-M | Sí |
-| Kraken | API oficial de saldo | Sí |
-| KuCoin | API oficial de cuentas | Sí |
-| OKX | API oficial V5 de saldo | Sí |
-| Bybit | API oficial V5 de cuenta unificada | Sí |
-| Precios cripto | APIs públicas de Binance, KuCoin y Kraken | Sí |
-| Acciones/ETF/fondos | Endpoint público de cotización, con ticker indicado por el usuario | Sí, mientras responda |
-| Gráficos | Widget gratuito de TradingView integrado por activo | Sí, visual |
+| Cualquier banco/tarjeta | CSV, XLSX, OFX, QFX, QIF; detector o selector | Importación |
+| Cualquier bróker/app | Operaciones o snapshot CSV/XLSX | Importación |
+| Binance | Spot, funding, Earn y futuros USDⓈ-M | Sí |
+| Kraken | Saldo oficial | Sí |
+| KuCoin | Cuentas oficiales | Sí |
+| OKX | API V5 de saldo | Sí |
+| Bybit | Cuenta unificada V5 | Sí |
+| Precios cripto | Endpoints públicos oficiales | Sí |
+| Acciones/ETF/fondos | Cotización pública por ticker | Mientras responda |
+| Gráficos | Widget gratuito TradingView | Visual |
 
-No se integra banca abierta de pago. Para Santander, MyInvestor y cualquier entidad sin API personal oficial y gratuita: exportar e importar.
+Sin API personal oficial y gratuita: importar. No usar agregadores de pago.
 
-## 3. Worker de Cloudflare
-- `worker.js` v2. Rutas autenticadas: `/ping`, `/balances`, `/prices`, `/hist`, `/sync/<id>`.
-- Obligatorio: `TOKEN` largo y KV enlazado como `CAUDAL` (nombres heredados). Recomendado: `ALLOWED_ORIGIN` con el origen de GitHub Pages.
-- Secretos opcionales: `BINANCE_KEY`/`BINANCE_SECRET`; `KRAKEN_KEY`/`KRAKEN_SECRET`; `KUCOIN_KEY`/`KUCOIN_SECRET`/`KUCOIN_PASSPHRASE`; `OKX_KEY`/`OKX_SECRET`/`OKX_PASSPHRASE`; `BYBIT_KEY`/`BYBIT_SECRET`.
-- Todas las claves son solo lectura. Los conectores fallan por separado y tienen timeout.
+## 3. Worker
+- `worker.js` v3. Rutas: `/ping`, `/balances`, `/prices`, `/hist`, `/sync/<id>`.
+- Obligatorios: `TOKEN` largo y KV `CAUDAL`. Recomendado: `ALLOWED_ORIGIN`.
+- Secretos opcionales por exchange. Siempre solo lectura.
+- Cabecera heredada: `X-Caudal-Token`.
 
-## 4. Datos y sincronización
-- Clave local heredada: `caudal_v1`. No cambiar.
-- `accounts`, `tx`, `ledger`, `assets`, `derivs`, `goals`, `costs`, `prices`, `hist`, `snaps`, `apiBal`, `rules`, `budgets`, `settings`, `deleted`, `stamps` y `dirty`.
-- Cambios por `change()` y marcas `_m`; `mergeStates()` mezcla elemento a elemento. AES-GCM en el navegador; el Worker solo guarda el blob cifrado.
-- Sincroniza al abrir, volver, recuperar conexión, tras cambios y cada minuto. Precios no cuentan como cambio del usuario.
+## 4. Modelo y compatibilidad
+- Clave local `caudal_v1`; prefijo de sincronización `caudal:`. No cambiar.
+- Listas: `accounts`, `tx`, `ledger`, `derivs`, `rules`, `goals`.
+- Mapas: `assets`, `costs`, `budgets`, `dismissed`.
+- Cachés: `prices`, `hist`, `snaps`, `apiBal`, `apiDerivs`.
+- Mezcla por `_m`, lápidas en `deleted`, marcas en `stamps`.
+- AES-GCM en navegador; el Worker guarda solo el blob cifrado.
 
-## 5. Importación universal
-- `readFile`: JSON, XLSX, CSV/TXT, OFX/QFX y QIF.
-- `FORMATS`, `detect`, `parseBank` y `parseLedger`: formatos conocidos.
-- `openMapper`: archivos desconocidos. Tipo: banco, operaciones de inversión o snapshot de posiciones.
-- `openPositionsImport`: sustituye el snapshot anterior de la misma fuente para evitar duplicados. Un snapshot no sustituye el historial para FIFO.
+## 5. Diseño v5
+- Grafito/blanco, azul de acción, verde/rojo solo semánticos.
+- Escritorio: sidebar por grupos y dashboard de 12 columnas con cuatro KPIs, patrimonio, mes, cuentas, insights, categorías, evolución, cargos, movimientos y avisos.
+- Móvil: patrimonio, separación cuentas/inversiones, tres indicadores, cuentas, avisos, cartera y movimientos.
+- Tabs móviles: Inicio, Gastos, Invertir, Cuentas. FAB para Añadir.
+- Gestos con Pointer Events: borde izquierdo abre menú; swipe cambia vistas; drawer hacia la izquierda cierra; hoja hacia abajo cierra.
+- Todos tienen alternativa visible y se respeta `prefers-reduced-motion`.
+- Porcentajes de patrimonio con base insuficiente se ocultan para evitar cifras engañosas.
+- `investmentSummary()` calcula valor, cambio diario, coste FIFO cubierto, ganancia y porcentaje acumulado.
 
-## 5b. Fiscalidad
-- FIFO global por activo, permutas, recompensas y derivados cerrados. Modelo 721 orientativo.
-- Exporta CSV y texto para IA/gestor. Siempre «orientativo, no asesoramiento fiscal»; no sustituye a un profesional.
+## 6. Pantallas
+- Inicio; Movimientos; Inversiones; Cuentas; Plan; Impuestos; Ajustes.
+- «Más» solo se conserva como ruta heredada a Herramientas, ya no es una pestaña principal.
+- Plan contiene presupuestos y bolsillos opcionales.
+- Ajustes: apariencia/dispositivos visibles; conexiones y avanzado plegables.
+- TOKEN: password vacío; nunca se renderiza el valor guardado.
 
-## 6. Diseño v4
-- Sistema visual neutro grafito/blanco con azul de acción; verde/rojo solo semánticos. Sin decoración gratuita.
-- Principios: claridad, contenido primero, adaptación al dispositivo, targets táctiles, contraste y `prefers-reduced-motion`.
-- Escritorio: barra lateral y dashboard de 12 columnas con patrimonio, mes, cuentas, categorías, evolución, cargos y alertas.
-- Móvil: `vResumenMobile` propio; patrimonio, dos indicadores esenciales, cuentas, alertas, principales inversiones y últimos movimientos. Cuatro tabs y menú desplegable lateral.
-- `assetDetail`: cotización, posición, gráfico TradingView, símbolo corregible y operaciones.
+## 7. Importación y análisis
+- `readFile`, `detect`, `parseBank`, `parseLedger`, `openMapper`, `parseOFX`, `parseQIF`, `openPositionsImport`.
+- Deduplicación por huella; snapshots sustituyen la misma fuente.
+- Reglas de categoría aprendidas, gastos fijos, previsión, colchón, alertas, gráfico táctil y TradingView.
+- FIFO global orientativo, recompensas, derivados y modelo 721.
 
-## 7. Pantallas
-- Inicio escritorio y móvil, Gastos, Inversiones, Objetivos, Impuestos, Cuentas, Ajustes y Más.
-- Modo claro/oscuro, ocultar importes, gráficos táctiles, filtros, reglas aprendidas, presupuestos, previsión, colchón y próximos cargos.
-
-## 8. Estructura del repositorio
-- `index.html`: app completa.
-- `worker.js`: backend Cloudflare.
-- `actualizar.html`: aplica cambios de Gemini/Claude en una caja aislada.
-- `AGENTS.md`, este contexto, `MAPA_DEL_CODIGO.md`.
-- `GUIA_PASO_A_PASO.txt` e `INSTRUCCIONES_GEM_Y_CLAUDE.txt`.
-- `tests/smoke.py`, datos de ejemplo, `tools/` y workflow de GitHub.
+## 8. Repositorio
+- App: `index.html`, `manifest.json`, `sw.js`, iconos.
+- Backend: `worker.js`.
+- IA: `actualizar.html`, `AGENTS.md`, este contexto, mapa e instrucciones TXT.
+- Usuario: guía PDF.
+- Pruebas: `tests/smoke.py`, `tests/worker_smoke.mjs` y ejemplos.
+- Automatización: `tools/mapa.py`, `tools/sincronizar_version.py`, workflow.
 
 ## 9. Historial
+- **v5 · Copilot:** Rediseño completo centrado en patrimonio, cuentas e inversiones; dashboard de escritorio más denso y móvil específico para el pulgar; navegación simplificada, gestos de borde, entre vistas y para cerrar hojas; Plan sustituye a Objetivos como herramienta opcional; Ajustes por tareas y TOKEN siempre enmascarado.
 - **v4 · Copilot:** Panel adaptativo inspirado en los principios públicos de Apple, inicio móvil propio, menú desplegable y animaciones accesibles; importación universal CSV/XLSX/OFX/QIF y snapshots; gráficos TradingView por activo; conexiones automáticas oficiales para Binance, Kraken, KuCoin, OKX y Bybit; seguridad y diagnóstico reforzados.
 - **v3 · Copilot:** Rediseño completo tipo app de banco e inversión: pestañas Inicio, Gastos, Inversiones y Más; patrimonio con gráfica táctil, tarjetas de cuentas, gasto del mes frente al anterior, «puedes gastar X al día», gasto por día, cartera con colores por activo, hojas que suben desde abajo en el móvil y app instalable de nuevo.
 - **v2 · Copilot:** Nueva app «Finanzas»: diseño azul noche y dorado con modo claro, menú lateral, botón rápido para añadir, gráficos interactivos, ideas del mes, previsión, colchón, próximos cargos, objetivos de ahorro, calendario de gastos y sincronización automática por cambios (sin pisar datos entre dispositivos).
 - **v1 · Copilot:** Primera versión: cuentas, movimientos con categorías automáticas, importación de Santander/Revolut/Binance/Kraken/KuCoin, cartera con precios en vivo, derivados, fiscalidad FIFO con borrador, presupuestos, alertas, sincronización cifrada y conexión con exchanges por un Worker.
 
-## 10. Pendiente / límites honestos
-- Probar OKX y Bybit con claves reales de Diego; las pruebas automatizadas usan respuestas simuladas.
-- Los endpoints públicos de precios pueden cambiar o limitar llamadas. La app conserva el último precio y muestra errores.
-- Banca abierta directa solo si aparece una opción personal, oficial y gratuita; no usar proveedores de pago.
-- Adaptar importadores específicos cuando haya un archivo real que el selector universal no interprete bien.
+## 10. Límites honestos
+- OKX y Bybit están probados con respuestas simuladas; falta validación con claves reales de Diego.
+- Los endpoints públicos pueden cambiar o limitar llamadas; se conserva el último precio.
+- Un snapshot da valor actual, pero no sustituye el historial para calcular rentabilidad/FIFO.
+- La fiscalidad es orientativa y no sustituye asesoramiento profesional.

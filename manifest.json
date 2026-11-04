@@ -2,7 +2,7 @@
   "id": "finanzas-app",
   "name": "Finanzas",
   "short_name": "Finanzas",
-  "description": "Panel personal de cuentas, gastos, inversión, cripto, objetivos e impuestos.",
+  "description": "Patrimonio, cuentas, gastos e inversiones en una PWA privada, adaptable y accesible.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
