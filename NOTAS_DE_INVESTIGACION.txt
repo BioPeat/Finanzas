@@ -1,0 +1,42 @@
+FINANZAS v4 · DECISIONES BASADAS EN FUENTES PÚBLICAS
+=====================================================
+
+DISEÑO
+- Apple Human Interface Guidelines, Layout: interfaz adaptable a tamaño y contexto; contenido importante primero.
+  https://developer.apple.com/design/human-interface-guidelines/layout
+- Apple HIG, Tab bars y Sidebars: tabs para secciones principales en móvil y sidebar en pantallas grandes.
+  https://developer.apple.com/design/human-interface-guidelines/tab-bars
+  https://developer.apple.com/design/human-interface-guidelines/sidebars
+- Apple HIG, Motion y Accessibility: movimiento para estado/feedback, no como decoración; respetar Reduce Motion, contraste y alternativas perceptibles.
+  https://developer.apple.com/design/human-interface-guidelines/motion
+  https://developer.apple.com/design/human-interface-guidelines/accessibility
+- W3C WCAG 2.2, Target Size: controles fáciles de pulsar y con espacio suficiente.
+  https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
+
+GRÁFICOS
+- TradingView Advanced Chart Widget: widget gratuito, adaptable e integrable por iframe.
+  https://www.tradingview.com/widget-docs/widgets/charts/advanced-chart/
+
+CONEXIONES
+- Binance Spot API y endpoints de cuenta oficiales.
+  https://developers.binance.com/en/docs/products/spot
+- Kraken, consulta oficial de saldo y permisos de claves.
+  https://docs.kraken.com/api-reference/account-data/get-account-balance
+  https://docs.kraken.com/exchange/guides/rest/api-keys
+- KuCoin, lista oficial de cuentas (permiso General).
+  https://www.kucoin.com/docs-new/rest/account-info/account-funding/get-account-list-spot
+- OKX API v5, autenticación y saldo.
+  https://app.okx.com/docs-v5/en/
+- Bybit V5, autenticación HMAC y wallet balance.
+  https://bybit-exchange.github.io/docs/v5/guide
+  https://bybit-exchange.github.io/docs/v5/account/wallet-balance
+
+INFRAESTRUCTURA
+- Cloudflare Workers Secrets: las claves sensibles se guardan como secretos, no en el código.
+  https://developers.cloudflare.com/workers/configuration/secrets/
+- Cloudflare Workers KV limits: el plan gratuito tiene límites; por eso la app no escribe precios continuamente y solo sincroniza cambios del usuario.
+  https://developers.cloudflare.com/kv/platform/limits/
+
+DECISIÓN SOBRE BANCOS Y BRÓKERES
+- La app no incorpora agregadores de pago. Una conexión bancaria PSD2 para una aplicación suele requerir proveedor/regulación y consentimiento; no se promete como gratuita. La solución universal y sin cuota es importación local CSV/XLSX/OFX/QFX/QIF.
+- Si en el futuro una entidad ofrece una API personal oficial y gratuita, se puede añadir al Worker sin cambiar este criterio.

@@ -2,11 +2,11 @@
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Finanzas · aplicar cambios de la IA</title>
 <style>
-:root{--bg:#f3f5fa;--panel:#fff;--line:#e4e9f2;--ink:#0f172a;--ink2:#475569;--up:#059669;--down:#dc2626;--warn:#d97706;--brand:#b7791f}
-@media (prefers-color-scheme:dark){:root{--bg:#0c1424;--panel:#141f36;--line:#22314f;--ink:#eef2f9;--ink2:#a9b6cc;--up:#34d399;--down:#f87171;--warn:#fbbf24;--brand:#e8b75a}}
+:root{--bg:#f5f5f7;--panel:#fff;--line:#e2e3e7;--ink:#1d1d1f;--ink2:#515154;--up:#16863d;--down:#d70015;--warn:#b65d00;--brand:#0066cc}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0d10;--panel:#171a20;--line:#2b3039;--ink:#f5f5f7;--ink2:#b3b7c0;--up:#30d158;--down:#ff453a;--warn:#ff9f0a;--brand:#0a84ff}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
-main{max-width:860px;margin:0 auto;padding:20px 16px 60px}h1{font:600 26px Georgia,serif;margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin:14px 0}
+main{max-width:860px;margin:0 auto;padding:28px 16px 70px}h1{font:730 30px/1.1 -apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:-.035em;margin:0 0 5px}h2{font-size:16px;margin:0 0 8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0}
 .muted{color:var(--ink2);font-size:13.5px}button,.btn{display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 14px inherit;cursor:pointer;margin:4px 6px 4px 0}
 button.primary{background:var(--brand);border-color:var(--brand);color:#1a1305}button:disabled{opacity:.5}
 textarea,input{width:100%;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);padding:10px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace}textarea{min-height:220px}
@@ -19,7 +19,7 @@ ul.checks{list-style:none;padding:0;margin:8px 0}ul.checks li{padding:4px 0;bord
 <li><b>Paso 2:</b> pega la respuesta de la IA y pulsa «Aplicar y comprobar». Se aplica sobre una copia y se prueba la app entera en una caja aislada: tus datos reales no se tocan.</li>
 <li><b>Si sale rojo:</b> «Copiar mensaje para la IA» → pégalo en el mismo chat → pega aquí su respuesta nueva. Si la IA trae solo los bloques corregidos («@@@ SOLO CORREGIDOS»), se combinan con los anteriores.</li>
 <li><b>Si la IA lo dividió en partes:</b> cuando la parte 1 salga verde, pulsa «Aplicar la siguiente parte encima» y pega la parte 2.</li>
-<li><b>Si sale verde:</b> descarga el index.html nuevo, cópialo en tu carpeta del repositorio (Reemplazar) y en GitHub Desktop: Commit to main → Push origin. GitHub vuelve a probarlo todo y actualiza solo CONTEXTO_FINANZAS y MAPA.</li></ol></details>
+<li><b>Si sale verde:</b> descarga el index.html nuevo, cópialo en tu carpeta del repositorio (Reemplazar) y en GitHub Desktop: Commit to main → Push origin. GitHub vuelve a probarlo todo y actualiza solo CONTEXTO_FINANZAS y MAPA.</li></ol><p class="muted"><b>Regla de conexiones:</b> la IA no puede añadir servicios de pago. Primero debe usar importación o APIs oficiales y gratuitas; si no existe una opción gratuita, se queda en importación.</p></details>
 <div class="card"><h2>Paso 1 · Archivo para tu IA</h2>
 <input type="text" id="kw" placeholder="Ej.: presupuestos, impuestos, gráfica">
 <button class="primary" id="dl-focus">Descargar archivo enfocado (recomendado)</button><button id="dl-light">Archivo sin estilos</button><button id="dl-full">Archivo completo</button>
@@ -35,7 +35,7 @@ ul.checks{list-style:none;padding:0;margin:8px 0}ul.checks li{padding:4px 0;bord
 "use strict";
 const $=id=>document.getElementById(id);
 // Si alguno de estos textos desaparece, el cambio se rechaza (protegen tus datos guardados).
-const PROTECTED=["STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function stampChanges(","function taxCompute(","LOCAL_ONLY","'caudal:'"];
+const PROTECTED=["STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function stampChanges(","function taxCompute(","function openDrawer(","function parseOFX(","function tvSymbol(","LOCAL_ONLY","'caudal:'","Solo se usan APIs oficiales y gratuitas"];
 let pub='',current='',result='',errText='',reviewText='',prev=[],parts=1;
 const ver=t=>+((t.match(/APP_VERSION='v(\d+)'/)||[])[1]||0),rev=t=>+((t.match(/APP_REVISION=(\d+)/)||[])[1]||0);
 function setCurrent(t,src){pub=t;current=t;parts=1;$('cur').innerHTML='Versión actual: <b>v'+ver(t)+'</b> · '+src;}

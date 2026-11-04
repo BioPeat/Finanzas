@@ -1,9 +1,16 @@
-# Finanzas
+# Finanzas v4
 
-Panel de finanzas personales (portátil) y app (móvil) en una sola web: cuentas, gastos, inversiones, cripto, derivados, objetivos e impuestos.
+Panel personal para portátil y PWA móvil: bancos, gastos, inversiones, cripto, derivados, objetivos e impuestos.
 
-- **Datos:** solo en el navegador de tus dispositivos. La sincronización guarda una copia **cifrada** en tu Worker; nadie más puede leerla. Este repositorio no contiene datos ni claves.
-- **Worker de Cloudflare:** `worker.js` (exchanges con claves de solo lectura, precios y sincronización).
-- **Cambios con IA:** `actualizar.html` + reglas en `AGENTS.md` y contexto en `CONTEXTO_FINANZAS.md`.
-- **Prueba completa:** `python tests/smoke.py` (la ejecuta GitHub en cada subida).
-- Nombres internos heredados de «Caudal» (clave `caudal_v1`, prefijo `caudal:`, cabecera `X-Caudal-Token`, KV `CAUDAL`): no se cambian para no perder datos.
+## Lo importante
+- **Sin cuotas:** no usa servicios de pago.
+- **Bancos y brókeres:** importa CSV, Excel, OFX, QFX o QIF. Si el formato es desconocido, eliges las columnas.
+- **Exchanges automáticos:** APIs oficiales de solo lectura para Binance, Kraken, KuCoin, OKX y Bybit mediante `worker.js`.
+- **Gráficos:** TradingView integrado en cada activo, sin cuenta ni clave.
+- **Privacidad:** datos locales y copia cifrada AES-GCM en el Worker. El repositorio no lleva datos ni secretos.
+
+Lee `GUIA_PASO_A_PASO.txt` antes de actualizar. Para cambios con IA usa `actualizar.html`, `AGENTS.md`, `CONTEXTO_FINANZAS.md` y `MAPA_DEL_CODIGO.md`.
+
+Prueba local: `python tests/smoke.py`.
+
+Se conservan los nombres internos `caudal_v1`, `caudal:`, `X-Caudal-Token` y `CAUDAL` para no perder datos existentes.

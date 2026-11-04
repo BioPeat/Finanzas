@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Finanzas</title>
-<meta name="theme-color" content="#0a1020">
+<meta name="theme-color" content="#0b0d10">
 <meta name="robots" content="noindex">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,22 +17,22 @@
 /* ===== Finanzas · estilos ===== */
 /* Banca + inversión: fondo azul noche, tarjetas planas, un solo acento dorado, verde/rojo solo para subir/bajar. */
 :root{
-  --bg:#0a1020;--bg2:#0d1529;--panel:#121b30;--panel2:#18233c;--panel3:#1e2a47;--line:#1f2a44;--line2:#2a3858;
-  --ink:#f3f6fb;--ink2:#a8b3c8;--ink3:#6c7a95;
-  --brand:#e8b75a;--brand2:#f4d18f;--brand-ink:#1b1305;--brand-soft:#e8b75a1c;
-  --up:#3ddc97;--down:#ff6b6b;--warn:#f5b84a;--info:#7cb4ff;
-  --up-soft:#3ddc971a;--down-soft:#ff6b6b1a;--warn-soft:#f5b84a1a;
+  --bg:#0b0d10;--bg2:#101318;--panel:#171a20;--panel2:#20242c;--panel3:#292e38;--line:#252a33;--line2:#353c48;
+  --ink:#f5f5f7;--ink2:#b3b7c0;--ink3:#7d838f;
+  --brand:#0a84ff;--brand2:#64b5ff;--brand-ink:#ffffff;--brand-soft:#0a84ff1c;
+  --up:#30d158;--down:#ff453a;--warn:#ff9f0a;--info:#64d2ff;
+  --up-soft:#30d15818;--down-soft:#ff453a18;--warn-soft:#ff9f0a18;
   --c1:#e8b75a;--c2:#3ddc97;--c3:#7cb4ff;--c4:#f472b6;--c5:#a78bfa;--c6:#2dd4bf;--c7:#fb923c;--c8:#94a3b8;
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI Variable","Segoe UI",Roboto,Inter,Arial,sans-serif;
   --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
-  --r:22px;--r2:14px;--gap:16px;--shadow:none;--ease:cubic-bezier(.2,.8,.2,1);
+  --r:20px;--r2:14px;--gap:16px;--shadow:none;--ease:cubic-bezier(.22,1,.36,1);
   color-scheme:dark;
 }
 html[data-theme=light]{
-  --bg:#f3f5f9;--bg2:#ebeef4;--panel:#ffffff;--panel2:#f2f4f8;--panel3:#e8ecf3;--line:#e6eaf1;--line2:#d6dce7;
-  --ink:#0d1526;--ink2:#4a5568;--ink3:#7a879c;
-  --brand:#b47a1d;--brand2:#d69e2e;--brand-ink:#ffffff;--brand-soft:#b47a1d14;
-  --up:#08916a;--down:#d93a3a;--warn:#c97a06;--info:#2563eb;
+  --bg:#f5f5f7;--bg2:#fbfbfd;--panel:#ffffff;--panel2:#f0f1f3;--panel3:#e6e8eb;--line:#e2e3e7;--line2:#c9ccd2;
+  --ink:#1d1d1f;--ink2:#515154;--ink3:#86868b;
+  --brand:#0066cc;--brand2:#0077ed;--brand-ink:#ffffff;--brand-soft:#0066cc12;
+  --up:#16863d;--down:#d70015;--warn:#b65d00;--info:#0066cc;
   --up-soft:#08916a14;--down-soft:#d93a3a12;--warn-soft:#c97a0614;
   --c1:#c48a2a;--c2:#08916a;--c3:#2563eb;--c4:#db2777;--c5:#7c3aed;--c6:#0d9488;--c7:#ea580c;--c8:#64748b;
   --shadow:0 1px 2px #0d15260a,0 4px 16px #0d15260a;
@@ -270,6 +270,7 @@ label.row{flex-wrap:nowrap}
 .acard.k-cash{background:linear-gradient(135deg,#6b5a2a,#2b230d)}
 .acard.add{background:var(--panel);border:1.5px dashed var(--line2);color:var(--ink2);align-items:center;justify-content:center;width:150px}
 .acard.add::after{display:none}
+.acard.add svg{width:24px;height:24px}
 /* Fichas de ideas */
 .icard{width:260px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:grid;gap:8px;align-content:start}
 .icard i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand)}
@@ -376,7 +377,37 @@ label.row{flex-wrap:nowrap}
   .icard{width:250px}
 }
 @media (min-width:1024px){.only-m{display:none!important}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* ===== v4 · interfaz adaptativa, sobria y táctil ===== */
+.side{width:260px;padding:24px 16px;background:var(--bg2)}
+main{max-width:1440px;padding:32px 40px 80px}
+.panel,.kpi,.icard,.tile{box-shadow:none}
+.panel{border-color:var(--line);background:var(--panel)}
+.btn,.iconbtn,.nav,.tile,.item,.hold,.acard{-webkit-user-select:none;user-select:none}
+.btn:active,.iconbtn:active,.tile:active,.item:active,.hold:active,.acard:active{transform:scale(.975)}
+.acard{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-top:3px solid var(--brand);min-height:122px}
+.acard::after{display:none}.acard.k-bank{background:var(--panel);border-top-color:#ff453a}.acard.k-exchange{background:var(--panel);border-top-color:#f0b90b}.acard.k-broker{background:var(--panel);border-top-color:#30d158}.acard.k-wallet{background:var(--panel);border-top-color:#bf5af2}.acard.k-cash{background:var(--panel);border-top-color:#64d2ff}
+.acard .sub{color:var(--ink2);opacity:1}.acard .top{opacity:1}.acard .tag{background:var(--up-soft)!important;color:var(--up)!important}
+.head h1{font-size:34px}.panel>h2{font-size:14px}.hero{background:linear-gradient(180deg,var(--panel),color-mix(in srgb,var(--panel) 88%,var(--brand-soft)))}
+.topbar .logo span{display:inline}.mobile-title{font-weight:720;font-size:17px;letter-spacing:-.02em}
+.drawer-scrim{position:fixed;inset:0;background:#0008;z-index:70;opacity:0;pointer-events:none;transition:opacity .22s var(--ease);backdrop-filter:blur(2px)}
+.drawer{position:fixed;inset:0 auto 0 0;width:min(86vw,340px);z-index:71;background:var(--bg2);padding:calc(18px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));transform:translateX(-104%);transition:transform .32s var(--ease);display:flex;flex-direction:column;box-shadow:18px 0 60px #0008}
+.drawer.open{transform:translateX(0)}.drawer-scrim.open{opacity:1;pointer-events:auto}
+.drawer-head{display:flex;align-items:center;gap:12px;padding:0 4px 20px}.drawer-head img{width:38px;height:38px;border-radius:11px}.drawer-head b{font-size:19px}.drawer-head .iconbtn{margin-left:auto}
+.drawer-nav{display:grid;gap:4px}.drawer .nav{min-height:50px;font-size:16px}.drawer-foot{margin-top:auto;padding:16px 6px 0;border-top:1px solid var(--line);display:grid;gap:12px}.drawer-foot .quickrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tv-frame{width:100%;height:min(54vh,520px);border:0;border-radius:16px;background:var(--panel2);display:block}.quote-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.quote-head .big{font-size:34px}.source-badge{display:inline-flex;align-items:center;gap:6px;color:var(--ink3);font-size:12px}.source-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--up)}
+.import-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.import-kind{border:1px solid var(--line);background:var(--panel2);border-radius:16px;padding:13px;text-align:left;color:inherit;cursor:pointer}.import-kind b{display:block}.import-kind small{color:var(--ink3)}
+.mobile-home{display:none}.mobile-pulse{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mobile-pulse .mini{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}.mobile-pulse .mini small{display:block;color:var(--ink3);font-weight:650}.mobile-pulse .mini b{display:block;font-size:21px;margin-top:5px}.mobile-section{margin-top:22px}.mobile-section>.sec-h{margin:0 2px 10px}.peek{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line)}.peek:last-child{border-bottom:0}.peek .left{display:flex;align-items:center;gap:11px;min-width:0}.peek .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800}.peek b,.peek small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.peek small{color:var(--ink3);font-size:12.5px}.peek .right{text-align:right;white-space:nowrap}
+@media (max-width:1023px){
+  .topbar{padding:calc(8px + env(safe-area-inset-top)) 12px 8px}.topbar>.logo{display:none}.topbar .mobile-title{display:block}.topbar .iconbtn{background:transparent}.topbar [data-act=sync-now]{display:none}
+  main{padding:8px 14px calc(98px + env(safe-area-inset-bottom))}.desktop-home{display:none}.mobile-home{display:block}
+  .panel{padding:16px;border-radius:18px}.head h1{font-size:30px}.hero{border-radius:22px}.hero .big{font-size:40px}.hero .chart{margin-top:8px}
+  .tabs{grid-template-columns:repeat(4,1fr);padding-top:4px}.tabs button{min-height:58px}
+  .drawer{display:flex}.tv-frame{height:56vh;border-radius:12px}.import-kinds{grid-template-columns:1fr}
+  dialog.asset-dialog{max-height:96vh}.mobile-pulse{grid-template-columns:1fr 1fr}
+}
+@media (min-width:1024px){.drawer,.drawer-scrim{display:none!important}.mobile-title{display:none}}
 </style><!--FIN-CSS-->
 </head>
 <body>
@@ -387,25 +418,28 @@ label.row{flex-wrap:nowrap}
   <div class="side-foot"><button class="sync" type="button" data-act="sync-now" id="sync-side"></button><div class="row" style="justify-content:space-between"><span class="faint" id="ver-side" style="font-size:12px"></span><span class="row" style="gap:6px"><button class="iconbtn" type="button" data-act="hide" id="hide-side" aria-label="Ocultar importes"></button><button class="iconbtn" type="button" data-act="theme" id="theme-side" aria-label="Modo claro u oscuro"></button></span></div></div>
 </aside>
 <div>
-<header class="topbar"><button class="logo" type="button" data-go="resumen"><img src="icon-192.png" alt="">Finanzas</button><span class="grow"></span><button class="iconbtn" type="button" data-act="sync-now" id="sync-top" aria-label="Sincronizar"></button><button class="iconbtn" type="button" data-act="hide" id="hide-top" aria-label="Ocultar importes"></button><button class="iconbtn" type="button" data-act="theme" id="theme-top" aria-label="Modo claro u oscuro"></button></header>
+<header class="topbar"><button class="iconbtn" type="button" data-act="drawer" aria-label="Abrir menú" aria-controls="mobile-drawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="mobile-title" id="mobile-title">Inicio</span><button class="logo" type="button" data-go="resumen"><img src="icon-192.png" alt="">Finanzas</button><span class="grow"></span><button class="iconbtn" type="button" data-act="sync-now" id="sync-top" aria-label="Sincronizar"></button><button class="iconbtn" type="button" data-act="hide" id="hide-top" aria-label="Ocultar importes"></button><button class="iconbtn" type="button" data-act="theme" id="theme-top" aria-label="Modo claro u oscuro"></button></header>
 <main id="main"></main>
 </div>
 <nav class="tabs" id="nav-tabs" aria-label="Secciones"></nav>
+<div class="drawer-scrim" id="drawer-scrim" data-act="drawer-close"></div>
+<aside class="drawer" id="mobile-drawer" aria-label="Menú" aria-hidden="true"><div class="drawer-head"><img src="icon-192.png" alt=""><span><b>Finanzas</b><small class="faint" style="display:block" id="ver-drawer"></small></span><button class="iconbtn" type="button" data-act="drawer-close" aria-label="Cerrar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div class="drawer-nav" id="nav-drawer"></div><div class="drawer-foot"><button class="sync" type="button" data-act="sync-now" id="sync-drawer"></button><div class="quickrow"><button class="btn" type="button" data-act="import">Importar</button><button class="btn" type="button" data-act="quick">Apuntar gasto</button></div></div></aside>
 </div>
 <dialog id="modal" aria-labelledby="modal-title"><div class="dlg-h"><h3 id="modal-title"></h3><button class="btn ghost small" type="button" id="modal-close" aria-label="Cerrar">Cerrar</button></div><div class="dlg-b" id="modal-body"></div></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-text"></span><button type="button" id="toast-undo" hidden>Deshacer</button></div>
-<input type="file" id="file-in" accept=".xlsx,.csv,.txt,.json" multiple hidden>
+<input type="file" id="file-in" accept=".xlsx,.csv,.txt,.json,.ofx,.qfx,.qif" multiple hidden>
 <script id="app">
 "use strict";
 /* Finanzas · tus finanzas en un solo sitio. Un único script (la versión está en APP_VERSION).
  Nota: la clave de guardado 'caudal_v1', el prefijo 'caudal:' de la sincronización y la cabecera X-Caudal-Token
  conservan el nombre antiguo de la app a propósito: cambiarlos haría perder los datos ya guardados.
  Registro de cambios (una línea por versión, la más nueva arriba):
+   v4 · Copilot · Panel adaptativo inspirado en los principios públicos de Apple, inicio móvil propio, menú desplegable y animaciones accesibles; importación universal CSV/XLSX/OFX/QIF y snapshots; gráficos TradingView por activo; conexiones automáticas oficiales para Binance, Kraken, KuCoin, OKX y Bybit; seguridad y diagnóstico reforzados.
    v3 · Copilot · Rediseño completo tipo app de banco e inversión: pestañas Inicio, Gastos, Inversiones y Más; patrimonio con gráfica táctil, tarjetas de cuentas, gasto del mes frente al anterior, «puedes gastar X al día», gasto por día, cartera con colores por activo, hojas que suben desde abajo en el móvil y app instalable de nuevo.
    v2 · Copilot · Nueva app «Finanzas»: diseño azul noche y dorado con modo claro, menú lateral, botón rápido para añadir, gráficos interactivos, ideas del mes, previsión, colchón, próximos cargos, objetivos de ahorro, calendario de gastos y sincronización automática por cambios (sin pisar datos entre dispositivos).
    v1 · Copilot · Primera versión: cuentas, movimientos con categorías automáticas, importación de Santander/Revolut/Binance/Kraken/KuCoin, cartera con precios en vivo, derivados, fiscalidad FIFO con borrador, presupuestos, alertas, sincronización cifrada y conexión con exchanges por un Worker.
 */
-const APP_VERSION='v3', APP_REVISION=2, STORE='caudal_v1', APP_NAME='Finanzas';
+const APP_VERSION='v4', APP_REVISION=2, STORE='caudal_v1', APP_NAME='Finanzas';
 
 // ===== Utilidades =====
 const $=id=>document.getElementById(id);
@@ -441,10 +475,11 @@ function toNum(v){
   if(typeof v==='number')return v;
   let s=String(v??'').replace(/[€$\s\u00a0]|EUR|USD/gi,'').trim();
   if(!s)return NaN;
+  const neg=/^\(.*\)$/.test(s);if(neg)s=s.slice(1,-1);
   if(/^-?[\d.]+,\d+$/.test(s))s=s.replace(/\./g,'').replace(',','.');
   else if(/^-?[\d,]+\.\d+$/.test(s))s=s.replace(/,/g,'');
   else if(/^-?\d+,\d+$/.test(s))s=s.replace(',','.');
-  return Number(s);
+  const n=Number(s);return neg?-n:n;
 }
 // Fechas «02/11/2026», «2026-11-02 10:22:01», «2026-11-02T10:22:01Z» o número de Excel.
 function toDate(v,dmy=true){
@@ -487,6 +522,7 @@ const ICON={
  check:'<path d="M20 6L9 17l-5-5"/>',
  grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+ menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
  alert:'<path d="M12 3l9.5 17H2.5z"/><path d="M12 10v4M12 17.5v.5"/>'
 };
 const ico=(n,s='')=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" '+s+'>'+(ICON[n]||'')+'</svg>';
@@ -650,19 +686,9 @@ async function unzip(buf){
 async function readXlsx(buf){
   const z=await unzip(buf),xml=s=>new DOMParser().parseFromString(s,'application/xml');
   const shared=z['xl/sharedStrings.xml']?[...xml(z['xl/sharedStrings.xml']).getElementsByTagName('si')].map(si=>[...si.getElementsByTagName('t')].map(t=>t.textContent).join('')):[];
-  const sheet=Object.keys(z).filter(k=>k.includes('worksheets/')).sort()[0];
-  if(!sheet)throw Error('El Excel no tiene hojas.');
-  const rows=[];
-  for(const r of xml(z[sheet]).getElementsByTagName('row')){
-    const row=[];
-    for(const c of r.getElementsByTagName('c')){
-      const ref=c.getAttribute('r')||'',col=[...ref.replace(/\d+/g,'')].reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1,t=c.getAttribute('t');
-      const v=c.getElementsByTagName('v')[0]?.textContent,isv=c.getElementsByTagName('is')[0];
-      row[col<0?row.length:col]=t==='s'?shared[+v]:t==='inlineStr'?(isv?.textContent||''):t==='str'||t==='b'?v:v!=null&&v!==''?Number(v):'';
-    }
-    rows.push(Array.from(row,x=>x??''));
-  }
-  return rows;
+  const sheets=Object.keys(z).filter(k=>k.includes('worksheets/')).sort();if(!sheets.length)throw Error('El Excel no tiene hojas.');
+  const all=sheets.map(sheet=>{const rows=[];for(const r of xml(z[sheet]).getElementsByTagName('row')){const row=[];for(const c of r.getElementsByTagName('c')){const ref=c.getAttribute('r')||'',col=[...ref.replace(/\d+/g,'')].reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1,t=c.getAttribute('t');const v=c.getElementsByTagName('v')[0]?.textContent,isv=c.getElementsByTagName('is')[0];row[col<0?row.length:col]=t==='s'?shared[+v]:t==='inlineStr'?(isv?.textContent||''):t==='str'||t==='b'?v:v!=null&&v!==''?Number(v):'';}rows.push(Array.from(row,x=>x??''));}return rows;});
+  return all.sort((a,b)=>b.filter(r=>r.some(c=>String(c).trim())).length-a.filter(r=>r.some(c=>String(c).trim())).length)[0];
 }
 function parseCSV(text){
   text=text.replace(/^\ufeff/,'');
@@ -768,19 +794,36 @@ function parseLedger(rows,fmt,head,map){
 }
 // Huella para no duplicar al volver a importar el mismo periodo.
 const txKey=t=>t.acc+'|'+t.date+'|'+t.amount+'|'+t.desc.slice(0,60)+'|'+(isFinite(t.bal)?t.bal:'');
-const lgKey=l=>l.acc+'|'+l.t+'|'+l.asset+'|'+l.change+'|'+l.kind;
+const lgKey=l=>l.acc+'|'+l.t+'|'+l.asset+'|'+l.change+'|'+l.kind+'|'+(l.ref||'');
+function parseOFX(text){
+  const clean=String(text).replace(/\r/g,''),blocks=clean.match(/<STMTTRN>[\s\S]*?<\/STMTTRN>/gi)||clean.match(/<STMTTRN>[\s\S]*?(?=<STMTTRN>|<\/BANKTRANLIST>)/gi)||[];
+  const get=(b,k)=>{const m=b.match(new RegExp('<'+k+'>([^<\n\r]+)','i'));return m?m[1].trim():'';};
+  const rows=[['fecha','concepto','importe','saldo']];
+  for(const b of blocks){const raw=get(b,'DTPOSTED').slice(0,8),date=raw.length===8?raw.slice(0,4)+'-'+raw.slice(4,6)+'-'+raw.slice(6,8):'',amount=get(b,'TRNAMT'),desc=[get(b,'NAME'),get(b,'MEMO')].filter(Boolean).join(' · ');if(date&&amount)rows.push([date,desc||get(b,'FITID')||'Movimiento',amount,'']);}
+  if(rows.length===1)throw Error('No encuentro movimientos en el archivo OFX/QFX.');
+  return rows;
+}
+function parseQIF(text){
+  const rows=[['fecha','concepto','importe','saldo']],items=String(text).replace(/\r/g,'').split(/^\^$/m);
+  for(const b of items){let d='',a='',desc='';for(const line of b.split('\n')){const k=line[0],v=line.slice(1).trim();if(k==='D')d=v.replace(/'/g,'/');else if(k==='T'||k==='U')a=v;else if(k==='P'||k==='M')desc+=(desc?' · ':'')+v;}const date=toDate(d);if(date&&a)rows.push([date.slice(0,10),desc||'Movimiento',a,'']);}
+  if(rows.length===1)throw Error('No encuentro movimientos en el archivo QIF.');
+  return rows;
+}
 async function readFile(file){
   if(/\.json$/i.test(file.name))return {json:JSON.parse(await file.text())};
   if(/\.xlsx$/i.test(file.name))return {rows:await readXlsx(await file.arrayBuffer())};
   if(/\.xls$/i.test(file.name))throw Error('Ese archivo es .xls antiguo. Ábrelo y guárdalo como .xlsx o CSV.');
-  return {rows:parseCSV(await file.text())};
+  const text=await file.text();
+  if(/\.(ofx|qfx)$/i.test(file.name))return {rows:parseOFX(text),forced:{fmt:'bbva',head:0}};
+  if(/\.qif$/i.test(file.name))return {rows:parseQIF(text),forced:{fmt:'bbva',head:0}};
+  return {rows:parseCSV(text)};
 }
 async function importFiles(files){
   for(const f of files){
     try{
       const r=await readFile(f);
       if(r.json){importBackup(r.json);continue;}
-      const det=detect(r.rows);
+      const det=r.forced||detect(r.rows);
       if(!det.fmt){openMapper(r.rows,f.name);continue;}
       openImport(r.rows,det,f.name);
     }catch(e){toast(f.name+': '+e.message);}
@@ -828,22 +871,33 @@ function openMapper(rows,fname){
   const hs=rows[head],opt=sel=>'<option value="-1">—</option>'+hs.map((h,i)=>'<option value="'+i+'"'+(i===sel?' selected':'')+'>'+esc(h||('Columna '+(i+1)))+'</option>').join('');
   const g=(...n)=>col(hs.map(H),...n);
   modal('Elegir columnas','<p>No reconozco el formato de <b>'+esc(fname)+'</b>. Dime qué columna es cada cosa (solo esta vez).</p>'
-   +'<div class="form"><label class="f wide">Tipo<select id="mp-type"><option value="bank">Movimientos de banco (euros)</option><option value="ledger">Movimientos de un exchange o bróker (activos)</option></select></label>'
+   +'<div class="form"><label class="f wide">Qué contiene el archivo<select id="mp-type"><option value="bank">Movimientos de banco o tarjeta</option><option value="ledger">Operaciones de inversión o cripto</option><option value="positions">Posiciones actuales (snapshot de cartera)</option></select></label>'
    +'<label class="f">Fecha<select id="mp-t">'+opt(g('fecha','date','time'))+'</select></label>'
    +'<label class="f" data-k="bank">Concepto<select id="mp-d">'+opt(g('concepto','descripcion','description'))+'</select></label>'
    +'<label class="f">Importe o cantidad<select id="mp-a">'+opt(g('importe','amount','cantidad','change'))+'</select></label>'
+   +'<label class="f" data-k="bank">Débito/cargo (opcional)<select id="mp-debit">'+opt(g('debit','cargo','debe','withdrawal'))+'</select></label>'
+   +'<label class="f" data-k="bank">Crédito/abono (opcional)<select id="mp-credit">'+opt(g('credit','abono','haber','deposit'))+'</select></label>'
    +'<label class="f" data-k="bank">Saldo (opcional)<select id="mp-b">'+opt(g('saldo','balance'))+'</select></label>'
    +'<label class="f" data-k="ledger" hidden>Activo<select id="mp-asset">'+opt(g('currency','coin','asset','activo'))+'</select></label>'
    +'<label class="f" data-k="ledger" hidden>Tipo de operación (opcional)<select id="mp-op">'+opt(g('type','operation','tipo'))+'</select></label></div>'
    +'<div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="mp-ok">Seguir</button></div>');
-  $('mp-type').onchange=()=>$$('[data-k]').forEach(e=>e.hidden=e.dataset.k!==$('mp-type').value);
+  $('mp-type').onchange=()=>$$('[data-k]').forEach(e=>e.hidden=!(e.dataset.k===$('mp-type').value||(e.dataset.k==='ledger'&&$('mp-type').value==='positions')));
   $('mp-ok').onclick=()=>{
     const v=id=>+$(id).value;
     if($('mp-type').value==='bank'){
-      const nr=[['fecha','concepto','importe','saldo']].concat(rows.slice(head+1).map(r=>[r[v('mp-t')],r[v('mp-d')],r[v('mp-a')],v('mp-b')>=0?r[v('mp-b')]:'']));
+      const nr=[['fecha','concepto','importe','saldo']].concat(rows.slice(head+1).map(r=>{const amount=v('mp-a')>=0?r[v('mp-a')]:(toNum(v('mp-credit')>=0?r[v('mp-credit')]:0)||0)-Math.abs(toNum(v('mp-debit')>=0?r[v('mp-debit')]:0)||0);return [r[v('mp-t')],r[v('mp-d')],amount,v('mp-b')>=0?r[v('mp-b')]:''];}));
       openImport(nr,{fmt:'bbva',head:0},fname);
-    }else openImport(rows,{fmt:'',head},fname,{type:'ledger',cols:{t:v('mp-t'),asset:v('mp-asset'),amt:v('mp-a'),side:-1,op:v('mp-op'),fee:-1,ref:-1}});
+    }else if($('mp-type').value==='positions')openPositionsImport(rows,head,fname,{date:v('mp-t'),asset:v('mp-asset'),qty:v('mp-a')});
+    else openImport(rows,{fmt:'',head},fname,{type:'ledger',cols:{t:v('mp-t'),asset:v('mp-asset'),amt:v('mp-a'),side:-1,op:v('mp-op'),fee:-1,ref:-1}});
   };
+}
+function openPositionsImport(rows,head,fname,map){
+  const parsed=[];for(const r of rows.slice(head+1)){const asset=normAsset(r[map.asset]),qty=toNum(r[map.qty]),date=map.date>=0?toDate(r[map.date]):today()+' 12:00:00';if(asset&&isFinite(qty)&&qty)parsed.push({asset,qty,date:date||today()+' 12:00:00'});}
+  if(!parsed.length)return toast('No encuentro posiciones válidas. Revisa las columnas.');
+  const opts=state.accounts.filter(a=>['broker','exchange','wallet'].includes(a.kind)).map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
+  modal('Importar posiciones','<p>He encontrado <b>'+parsed.length+' posiciones</b>. Esta opción sirve para cualquier bróker o app que exporte solo la cartera actual.</p><div class="form"><label class="f wide">Cuenta<select id="pos-acc">'+opts+'<option value="__new" selected>+ Nueva cuenta</option></select></label><label class="f wide">Nombre<input type="text" id="pos-name" value="'+esc(fname.replace(/\.\w+$/,''))+'"></label></div><p class="note">Al volver a importar este mismo archivo se sustituye su snapshot anterior; no se duplica. Para impuestos importa también el historial de operaciones.</p><button class="btn primary" type="button" id="pos-ok">Importar snapshot</button>');
+  $('pos-acc').onchange=()=>$('pos-name').parentElement.hidden=$('pos-acc').value!=='__new';
+  $('pos-ok').onclick=()=>{change(()=>{let a=accById($('pos-acc').value);if(!a){a={id:'a_'+uid(),name:val('pos-name').trim()||'Cartera',kind:'broker',inst:'',currency:'EUR'};state.accounts.push(a);}const src='snapshot:'+fname;state.ledger=state.ledger.filter(l=>!(l.acc===a.id&&l.snapshotSource===src));for(const p of parsed)state.ledger.push({id:'l_'+uid(),acc:a.id,t:p.date,asset:p.asset,change:p.qty,kind:'deposit',ref:src+'|'+p.asset,src:fname,note:'Snapshot importado',snapshotSource:src});for(const p of parsed)ensureAsset(p.asset);},'Posiciones importadas');$('modal').close();refreshPrices();};
 }
 function importBackup(o){
   if(!o||!Array.isArray(o.accounts))throw Error('No es una copia de Finanzas.');
@@ -1145,23 +1199,24 @@ async function api(path,opts={}){
   }catch(e){if(e.name==='AbortError')throw Error('El Worker no responde.');throw e;}
   finally{clearTimeout(tm);}
 }
-const EXCH={binance:'Binance',kraken:'Kraken',kucoin:'KuCoin'};
+const EXCH={binance:'Binance',kraken:'Kraken',kucoin:'KuCoin',okx:'OKX',bybit:'Bybit'};
 let balBusy=false;
 async function syncBalances(manual=false){
   if(!state.settings.worker||balBusy)return;balBusy=true;
   try{
-    const r=await api('/balances',{timeout:30000}),errs=[];
+    const before=clone(state),r=await api('/balances',{timeout:30000}),errs=[];let structural=false;
     const derivs=[];
     for(const [ex,data] of Object.entries(r.exchanges||{})){
       let a=state.accounts.find(x=>x.api===ex);
-      if(!a){a={id:'a_'+uid(),name:EXCH[ex]||ex,kind:'exchange',inst:EXCH[ex]||ex,currency:'EUR',api:ex,reportsSpain:ex==='binance'};state.accounts.push(a);}
+      if(!a){a={id:'a_api_'+ex,name:EXCH[ex]||ex,kind:'exchange',inst:EXCH[ex]||ex,currency:'EUR',api:ex,reportsSpain:ex==='binance'};state.accounts.push(a);structural=true;}
       const assets={};for(const [k,v] of Object.entries(data.assets||{})){const s=normAsset(k);assets[s]=(assets[s]||0)+(+v||0);ensureAsset(s);}
       state.apiBal[a.id]={ts:Date.now(),assets};
       for(const p of data.positions||[])derivs.push({...p,acc:a.id});
+      for(const w of data.warnings||[])errs.push((EXCH[ex]||ex)+': '+w);
     }
     for(const [ex,e] of Object.entries(r.errors||{}))errs.push((EXCH[ex]||ex)+': '+e);
     state.apiDerivs=derivs;state.apiErrors=errs;state.apiTs=Date.now();
-    save(false);await refreshPrices();
+    if(structural){stampChanges(before);save();}else save(false);await refreshPrices();
     if(manual)toast(errs.length?'Saldos actualizados con avisos: '+errs.join(' · '):'Saldos de los exchanges actualizados');
   }catch(e){state.apiErrors=[e.message];if(manual)toast(e.message);}
   finally{balBusy=false;if(ready)render();}
@@ -1250,7 +1305,7 @@ function paintSync(){
   const on=syncOn(),t=state.settings.lastSync;
   const cls=!on?'':syncState==='busy'?'busy':syncState==='err'||syncState==='off'?'err':t?'ok':'';
   const txt=!on?'Solo en este dispositivo':syncState==='busy'?'Sincronizando…':syncState==='err'?'Error al sincronizar':syncState==='off'?'Sin conexión':'Sincronizado '+ago(t);
-  for(const id of ['sync-side'])if($(id))$(id).innerHTML='<span class="dot '+cls+'"></span>'+txt;
+  for(const id of ['sync-side','sync-drawer'])if($(id))$(id).innerHTML='<span class="dot '+cls+'"></span>'+txt;
   if($('sync-top')){$('sync-top').innerHTML='<span class="dot '+cls+'" style="width:10px;height:10px"></span>';$('sync-top').title=txt;}
   $$('[data-syncstate]').forEach(e=>e.innerHTML='<span class="row" style="gap:8px"><span class="dot '+cls+'"></span>'+txt+'</span>');
 }
@@ -1381,21 +1436,22 @@ const VIEWS=[['resumen','Inicio','home'],['movimientos','Gastos','list'],['inver
 const TABS=[['resumen','Inicio','home'],['movimientos','Gastos','list'],['inversiones','Inversiones','chart'],['mas','Más','grid']];
 let filt={q:'',m:'',cat:'',acc:'',type:'out',day:''},range='6M',invView='activos',lastView='';
 const RANGES=[['1S',8],['1M',31],['6M',183],['1A',366],['Máx',3650]];
-function go(v,f){if(f)filt={...filt,day:'',...f};view=v;render();window.scrollTo({top:0});try{history.replaceState(null,'','#'+v);}catch(e){}}
+function go(v,f){closeDrawer();if(f)filt={...filt,day:'',...f};view=v;render();window.scrollTo({top:0});try{history.replaceState(null,'','#'+v);}catch(e){}}
 function navBtns(cls){return VIEWS.map(([id,n,i])=>'<button class="'+cls+'" type="button" data-go="'+id+'"'+(view===id?' aria-current="page"':'')+'>'+ico(i)+n+'</button>').join('');}
 function renderNav(){
   $('nav-side').innerHTML=navBtns('nav');
+  if($('nav-drawer'))$('nav-drawer').innerHTML=navBtns('nav');
   const inMas=!['resumen','movimientos','inversiones'].includes(view);
   $('nav-tabs').innerHTML=TABS.map(([id,n,i])=>'<button type="button" data-go="'+id+'"'+((view===id||(id==='mas'&&inMas))?' aria-current="page"':'')+'>'+ico(i)+n+'</button>').join('');
   const dark=document.documentElement.dataset.theme!=='light',hid=!!state.settings.hide;
   for(const id of ['theme-side','theme-top'])if($(id))$(id).innerHTML=ico(dark?'sun':'moon');
   for(const id of ['hide-side','hide-top'])if($(id))$(id).innerHTML=ico(hid?'eyeoff':'eye');
-  $('ver-side').textContent=APP_NAME+' '+APP_VERSION;paintSync();
+  $('ver-side').textContent=APP_NAME+' '+APP_VERSION;if($('ver-drawer'))$('ver-drawer').textContent=APP_VERSION;if($('mobile-title'))$('mobile-title').textContent=(VIEWS.find(x=>x[0]===view)||['','Más'])[1];paintSync();
 }
 function render(){
   const th=state.settings.theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):state.settings.theme;
   document.documentElement.dataset.theme=th;
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content',th==='light'?'#f3f5f9':'#0a1020');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content',th==='light'?'#f5f5f7':'#0b0d10');
   document.body.classList.toggle('hide-amounts',!!state.settings.hide);
   renderNav();
   const f={resumen:vResumen,movimientos:vMovs,inversiones:vInv,objetivos:vGoals,impuestos:vTax,cuentas:vCuentas,ajustes:vAjustes,mas:vMas}[view]||vResumen;
@@ -1421,6 +1477,17 @@ function deltaPill(chg,base,txt){const p=base?chg/Math.abs(base)*100:null;return
 const RANGE_TXT={'1S':'esta semana','1M':'en un mes','6M':'en 6 meses','1A':'en un año','Máx':'desde el principio'};
 
 // ===== Inicio =====
+function vResumenMobile(){
+  const nw=netWorth(),pts=netSeries(rangeDays()).pts,m=monthKey(today()),mt=monthTotals(m),p=pace(),s=safeToSpend(),al=alerts().slice(0,3),rows=nw.rows.filter(r=>!r.bank).sort((a,b)=>b.eur-a.eur).slice(0,4),last=state.tx.slice().sort((a,b)=>b.date.localeCompare(a.date)||(a.ord??0)-(b.ord??0)).slice(0,5),accs=state.accounts.slice().sort((a,b)=>accValue(b,nw.rows)-accValue(a,nw.rows));
+  return '<div class="mobile-home">'
+   +'<section class="panel hero"><div class="lbl">Patrimonio</div><div class="big">'+moneyBig(nw.total)+'</div><div class="chart">'+svgLine(pts,{id:'nw',h:138})+'</div>'+rangeBtns()+'</section>'
+   +'<div class="mobile-pulse" style="margin-top:10px"><button class="mini" type="button" data-go="movimientos"><small>Gastado este mes</small><b>'+money(p.now,{d:0})+'</b><span class="'+(p.diff<=0?'up':'down')+'" style="font-size:12px">'+(p.prev?(p.diff<=0?'▼ ':'▲ ')+nf(Math.abs(p.diff),0)+' % vs. anterior':'Primer mes')+'</span></button><button class="mini" type="button" data-act="forecast"><small>Puedes gastar</small><b>'+money(s.per,{d:0})+'/día</b><span class="faint" style="font-size:12px">'+s.left+' días restantes</span></button></div>'
+   +'<div class="mobile-section"><div class="sec-h"><h2>Cuentas</h2>'+btn('Ver todas','data-go="cuentas"','ghost small')+'</div><div class="strip">'+accs.map(a=>accCard(a,nw.rows)).join('')+'<button type="button" class="acard add" data-act="import">'+ico('upload')+'<span>Importar</span></button></div></div>'
+   +(al.length?'<div class="mobile-section"><div class="sec-h"><h2>Atención</h2></div><section class="panel">'+al.map(a=>'<div class="alert '+a.lvl+'"><i>'+ico(a.lvl==='ok'?'trend':a.lvl==='info'?'bell':'alert')+'</i><div>'+esc(a.txt)+'</div><button class="btn ghost small" type="button" data-dismiss="'+esc(a.id)+'" aria-label="Ocultar">'+ico('x')+'</button></div>').join('')+'</section></div>':'')
+   +(rows.length?'<div class="mobile-section"><div class="sec-h"><h2>Principales inversiones</h2>'+btn('Ver cartera','data-go="inversiones"','ghost small')+'</div><section class="panel">'+rows.map(r=>'<button class="peek" type="button" data-asset="'+esc(r.asset)+'"><span class="left"><span class="av" style="background:'+assetColor(r.asset)+'">'+esc(r.asset.slice(0,4))+'</span><span><b>'+esc(state.assets[r.asset]?.name||r.asset)+'</b><small>'+nf(r.qty,r.qty<1?6:2,0)+' '+esc(r.asset)+'</small></span></span><span class="right"><b>'+money(r.eur,{d:0})+'</b><small class="'+cls(state.prices[r.asset]?.chg)+'">'+(state.prices[r.asset]?.chg!=null?pct(state.prices[r.asset].chg):'')+'</small></span></button>').join('')+'</section></div>':'')
+   +'<div class="mobile-section"><div class="sec-h"><h2>Últimos movimientos</h2>'+btn('Ver todos','data-go="movimientos"','ghost small')+'</div><section class="panel">'+(last.map(txItem).join('')||'<p class="muted">Sin movimientos.</p>')+'</section></div></div>';
+}
+
 function greeting(){const h=new Date().getHours();return h<6?'Buenas noches':h<14?'Buenos días':h<21?'Buenas tardes':'Buenas noches';}
 // Lo que puedes gastar al día hasta fin de mes sin bajar del saldo mínimo de Ajustes.
 function safeToSpend(){const f=forecast(),floor=+state.settings.lowBal||0,left=Math.max(1,Math.round(f.left)+1);return {per:Math.max(0,(f.bal+f.salary-f.fixed-floor)/left),left,floor,f};}
@@ -1431,6 +1498,7 @@ function accCard(a,rows){
   return '<button type="button" class="acard k-'+a.kind+'" data-acc="'+a.id+'"><span class="top"><span>'+esc(a.name)+'</span>'+(state.apiBal[a.id]?'<span class="tag" style="background:#ffffff26;color:#fff">auto</span>':'')+'</span><span><span class="val">'+money(v,{d:0})+'</span><br><span class="sub">'+esc(sub)+'</span></span></button>';
 }
 function vResumen(){
+  if(narrow()&&state.accounts.length)return vResumenMobile();
   if(!state.accounts.length)return head('Hola','Todo tu dinero en un solo sitio.')+onboarding();
   const nw=netWorth(),ser=netSeries(rangeDays()),pts=ser.pts.length?ser.pts:[];
   const first=pts[0]?.[1],chg=pts.length>1?nw.total-first:0;
@@ -1474,9 +1542,9 @@ function onboarding(){
   const has=x=>x?' class="done"':'';
   return '<div class="grid"><section class="panel span7"><h2>Empieza en 3 pasos</h2><ol class="steps">'
   +'<li'+has(state.tx.length)+'><div><b>Importa el extracto de tu banco.</b><br><span class="muted">Santander: Movimientos → icono de descarga → Excel. También vale Revolut o cualquier CSV.</span><div class="row" style="margin-top:10px">'+btn(ico('upload')+'Importar archivo','data-act="import"','primary')+'</div></div></li>'
-  +'<li'+has(state.settings.worker)+'><div><b>Conecta tus exchanges (opcional).</b><br><span class="muted">Saldos de Binance, Kraken y KuCoin que se actualizan solos, con claves de solo lectura.</span><div class="row" style="margin-top:10px">'+btn('Ver cómo','data-go="ajustes"')+'</div></div></li>'
+  +'<li'+has(state.settings.worker)+'><div><b>Conecta tus exchanges (opcional).</b><br><span class="muted">Saldos de Binance, Kraken, KuCoin, OKX y Bybit que se actualizan solos, con claves de solo lectura.</span><div class="row" style="margin-top:10px">'+btn('Ver cómo','data-go="ajustes"')+'</div></div></li>'
   +'<li'+has(state.settings.sync)+'><div><b>Vincula el móvil.</b><br><span class="muted">Los mismos datos en el portátil y en el móvil, cifrados y sincronizados solos.</span></div></li></ol></section>'
-  +'<section class="panel span5"><h2>Arrastra aquí tus archivos</h2><div class="drop" id="drop" data-act="import">'+ico('upload','style="width:28px;height:28px;color:var(--brand)"')+'<br><b>Excel o CSV del banco o de tus exchanges</b><br><span class="faint">Santander · Revolut · Binance · Kraken · KuCoin · otros</span></div><p class="note">Todo se procesa en tu navegador. Nada sale de tu dispositivo salvo la copia cifrada si activas la sincronización.</p></section></div>';
+  +'<section class="panel span5"><h2>Arrastra aquí tus archivos</h2><div class="drop" id="drop" data-act="import">'+ico('upload','style="width:28px;height:28px;color:var(--brand)"')+'<br><b>Excel o CSV del banco o de tus exchanges</b><br><span class="faint">Cualquier banco, bróker o exchange · CSV, Excel, OFX, QFX o QIF</span></div><p class="note">Todo se procesa en tu navegador. Nada sale de tu dispositivo salvo la copia cifrada si activas la sincronización.</p></section></div>';
 }
 function txItem(t){
   const c=catById(t.cat),incoming=t.amount>0,mer=merchantOf(t.desc);
@@ -1615,15 +1683,24 @@ function opsTable(ops){
   return '<div class="scroll"><table class="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Activo</th><th class="r">Cambio</th><th class="hide-m">Cuenta</th><th class="hide-m">Detalle</th></tr></thead><tbody>'
    +ops.slice(0,300).map(l=>'<tr data-open data-op="'+l.id+'"><td class="num">'+l.t.slice(0,16)+'</td><td>'+OPK[l.kind]+'</td><td><b>'+esc(l.asset)+'</b></td><td class="r '+cls(l.change)+'">'+(l.change>0?'+':'')+nf(l.change,8,0)+'</td><td class="hide-m">'+esc(accName(l.acc))+'</td><td class="hide-m faint">'+esc(l.note||'')+'</td></tr>').join('')+'</tbody></table></div>'+(ops.length>300?'<p class="note">Se muestran las 300 más recientes.</p>':'');
 }
+function tvSymbol(sym){
+  const a=state.assets[sym]||{};if(a.tv)return a.tv;
+  if(isCryptoish(sym)&&!FIAT.includes(sym))return 'BINANCE:'+sym+'USDT';
+  const y=(a.yahoo||sym).toUpperCase(),suffix={'.MC':'BME:','.DE':'XETR:','.AS':'EURONEXT:','.L':'LSE:','.PA':'EURONEXT:','.MI':'MIL:'};
+  for(const [k,v] of Object.entries(suffix))if(y.endsWith(k))return v+y.slice(0,-k.length);
+  return y.includes(':')?y:'NASDAQ:'+y;
+}
+function tradingViewURL(sym){const q=new URLSearchParams({symbol:tvSymbol(sym),interval:'D',theme:document.documentElement.dataset.theme==='light'?'light':'dark',style:'1',locale:'es',timezone:'Europe/Madrid',withdateranges:'1',hide_side_toolbar:'0',allow_symbol_change:'1',save_image:'0'});return 'https://s.tradingview.com/widgetembed/?'+q;}
 function assetDetail(sym){
-  const a=state.assets[sym]||{},rows=positionRows().filter(r=>r.asset===sym),cb=costBasis()[sym],ops=state.ledger.filter(l=>l.asset===sym).sort((x,y)=>y.t.localeCompare(x.t));
-  modal(esc(sym),'<div class="kv">'+rows.map(r=>'<dt>'+esc(accName(r.acc))+'</dt><dd>'+nf(r.qty,8,0)+' · '+money(r.eur)+'</dd>').join('')+'</div>'
+  const a=state.assets[sym]||{},rows=positionRows().filter(r=>r.asset===sym),cb=costBasis()[sym],ops=state.ledger.filter(l=>l.asset===sym).sort((x,y)=>y.t.localeCompare(x.t)),pr=priceEUR(sym),chg=state.prices[sym]?.chg;
+  modal(esc(a.name||sym),'<div class="quote-head"><div><span class="source-badge">Precio actualizado</span><div class="big">'+(pr?money(pr):'Sin precio')+'</div>'+(chg!=null?'<span class="pill '+cls(chg)+'">'+pct(chg)+' hoy</span>':'')+'</div><div style="text-align:right"><b>'+money(sum(rows.map(r=>r.eur)),{d:0})+'</b><small class="faint" style="display:block">tu posición</small></div></div>'
+   +'<iframe class="tv-frame" title="Gráfico en tiempo real de '+esc(sym)+'" loading="lazy" referrerpolicy="origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" src="'+esc(tradingViewURL(sym))+'"></iframe><p class="note">Gráfico gratuito de TradingView. Si el símbolo no coincide, corrígelo abajo una vez.</p>'
+   +'<div class="kv" style="margin-top:16px">'+rows.map(r=>'<dt>'+esc(accName(r.acc))+'</dt><dd>'+nf(r.qty,8,0)+' · '+money(r.eur)+'</dd>').join('')+'</div>'
    +(cb?'<p class="note">Coste FIFO de lo que queda: '+money(cb.cost)+' por '+nf(cb.qty,8,0)+' ('+nf(cb.qty?cb.cost/cb.qty:0,4,2)+' €/u).'+(cb.missing?' Falta el coste de algún depósito: complétalo en Impuestos.':'')+'</p>':'')
-   +'<div class="form" style="margin-top:12px"><label class="f">Tipo de activo<select id="as-cls">'+['crypto','stable','etf','fund','stock','bond','other'].map(c=>'<option value="'+c+'"'+(assetCls(sym)===c?' selected':'')+'>'+CLASS_NAMES[c]+'</option>').join('')+'</select></label>'
-   +'<label class="f">Ticker de precio (Yahoo)<input type="text" id="as-yahoo" value="'+esc(a.yahoo||'')+'" placeholder="Ej.: VWCE.DE, IWDA.AS, 0P0001…"></label>'
-   +'<label class="f wide">Nombre<input type="text" id="as-name" value="'+esc(a.name||'')+'"></label></div><p class="note">Para ETF, fondos y acciones pon el ticker de Yahoo Finance (búscalo en finance.yahoo.com). Necesita el Worker.</p>'
-   +'<div class="row" style="margin-top:10px">'+btn('Guardar','data-act="asset-save" data-id="'+esc(sym)+'"','primary')+'</div>'
-   +'<h4 style="margin:18px 0 6px">Operaciones ('+ops.length+')</h4>'+opsTable(ops));
+   +'<details style="margin-top:16px"><summary>Ajustar activo y símbolo</summary><div class="form" style="margin-top:12px"><label class="f">Tipo de activo<select id="as-cls">'+['crypto','stable','etf','fund','stock','bond','other'].map(c=>'<option value="'+c+'"'+(assetCls(sym)===c?' selected':'')+'>'+CLASS_NAMES[c]+'</option>').join('')+'</select></label>'
+   +'<label class="f">Ticker de precio<input type="text" id="as-yahoo" value="'+esc(a.yahoo||'')+'" placeholder="Ej.: VWCE.DE, AAPL"></label><label class="f">Símbolo de TradingView<input type="text" id="as-tv" value="'+esc(a.tv||tvSymbol(sym))+'" placeholder="Ej.: BME:IBE, NASDAQ:AAPL"></label><label class="f">Nombre<input type="text" id="as-name" value="'+esc(a.name||'')+'"></label></div><p class="note">TradingView: busca el activo, abre su gráfico y copia el símbolo con su mercado. Ejemplos: BINANCE:BTCUSDT, NASDAQ:AAPL, BME:IBE, XETR:VWCE.</p><div class="row" style="margin-top:10px">'+btn('Guardar','data-act="asset-save" data-id="'+esc(sym)+'"','primary')+'</div></details>'
+   +'<details style="margin-top:16px"><summary>Operaciones ('+ops.length+')</summary>'+opsTable(ops)+'</details>');
+  $('modal').classList.add('asset-dialog');
 }
 function editOp(id){
   const l=state.ledger.find(x=>x.id===id),accs=state.accounts.filter(a=>a.kind!=='bank');
@@ -1721,7 +1798,7 @@ function editAcc(id){
 }
 
 // ===== Ajustes =====
-const WORKER_STEPS=['Crea una cuenta gratis en <b>dash.cloudflare.com</b>.','Ve a <b>Workers y Pages → Crear → Worker</b>, ponle de nombre <code>finanzas</code> y pulsa <b>Implementar</b>.','Pulsa <b>Editar código</b>, borra todo y pega el código del Worker (botón de abajo). Pulsa <b>Implementar</b>.','En <b>Almacenamiento → KV</b> crea un espacio llamado <code>finanzas</code>. En tu Worker: <b>Configuración → Enlaces → Añadir → Espacio de nombres KV</b>, con el nombre de variable <code>CAUDAL</code>.','En <b>Configuración → Variables y secretos</b> añade como <b>secreto</b> <code>TOKEN</code> con el código de abajo, y las claves de solo lectura de tus exchanges (ver guía).','Copia la dirección del Worker (acaba en <code>.workers.dev</code>), pégala aquí y pulsa <b>Probar</b>.'];
+const WORKER_STEPS=['Abre tu cuenta gratuita en <b>dash.cloudflare.com</b> y entra en <b>Workers y Pages</b>.','Abre tu Worker <code>finanzas</code> y pulsa <b>Edit code</b>. Borra el código, pega el archivo <code>worker.js</code> entero y pulsa <b>Deploy</b>.','Conserva el KV enlazado con el nombre de variable <code>CAUDAL</code> y el secreto <code>TOKEN</code>: no hay que crearlos de nuevo.','En <b>Settings → Variables and Secrets</b> añade el secreto <code>ALLOWED_ORIGIN</code> con <code>https://TU-USUARIO.github.io</code> (sin barra final) para que solo tu web pueda llamar al Worker.','Añade únicamente las claves de los exchanges que uses, siempre como secretos y con permiso de solo lectura. Nunca actives operar, transferir o retirar.','Copia la dirección que acaba en <code>.workers.dev</code>, pégala aquí y pulsa <b>Guardar y probar</b>. Todo usa planes gratuitos.'];
 function vAjustes(){
   const s=state.settings,on=s.worker&&s.token;
   const seg=(k,opts)=>'<div class="seg">'+opts.map(([v,n])=>'<button type="button" data-set="'+k+'" data-val="'+v+'" aria-pressed="'+(s[k]===v)+'">'+n+'</button>').join('')+'</div>';
@@ -1737,7 +1814,7 @@ function vAjustes(){
    +'<details style="margin-top:12px"'+(on?'':' open')+'><summary><b>Cómo montarlo (10 minutos, una sola vez)</b></summary><ol class="steps" style="margin-top:10px">'+WORKER_STEPS.map(x=>'<li><div>'+x+'</div></li>').join('')+'</ol>'
    +'<div class="label" style="margin-top:16px">Claves de solo lectura de cada exchange</div><div class="kv" style="grid-template-columns:auto 1fr;gap:8px 14px"><dt><b>Binance</b></dt><dd style="text-align:left;font-weight:400">Perfil → Gestión de API → Crear API → «generada por el sistema». Deja marcada <b>solo</b> «Habilitar lectura». Secretos: <code>BINANCE_KEY</code> y <code>BINANCE_SECRET</code>.</dd>'
    +'<dt><b>Kraken</b></dt><dd style="text-align:left;font-weight:400">Configuración → API → Crear clave. Permisos: Consultar fondos, Consultar órdenes y operaciones, Consultar libro mayor. Nada más. Secretos: <code>KRAKEN_KEY</code> y <code>KRAKEN_SECRET</code>.</dd>'
-   +'<dt><b>KuCoin</b></dt><dd style="text-align:left;font-weight:400">Gestión de API → Crear API → permiso «General» (solo lectura) y una frase de contraseña. Secretos: <code>KUCOIN_KEY</code>, <code>KUCOIN_SECRET</code> y <code>KUCOIN_PASSPHRASE</code>.</dd></div>'
+   +'<dt><b>KuCoin</b></dt><dd style="text-align:left;font-weight:400">Gestión de API → Crear API → permiso «General» (solo lectura) y una frase de contraseña. Secretos: <code>KUCOIN_KEY</code>, <code>KUCOIN_SECRET</code> y <code>KUCOIN_PASSPHRASE</code>.</dd><dt><b>OKX</b></dt><dd style="text-align:left;font-weight:400">Perfil → API → Crear clave V5 → permiso «Read». Secretos: <code>OKX_KEY</code>, <code>OKX_SECRET</code> y <code>OKX_PASSPHRASE</code>.</dd><dt><b>Bybit</b></dt><dd style="text-align:left;font-weight:400">Cuenta → API → Crear clave → solo «Read-Only». Secretos: <code>BYBIT_KEY</code> y <code>BYBIT_SECRET</code>.</dd></div><p class="note">Solo se usan APIs oficiales y gratuitas. Para bancos y brókeres sin API personal gratuita, importa CSV, Excel, OFX, QFX o QIF; la app te deja elegir columnas si no reconoce el formato.</p>'
    +'<p class="note">Nunca actives permisos de operar ni de retirar. Si una clave se filtrara, solo serviría para ver saldos.</p></details></section>'
   +'<section class="panel span6"><h2>Reglas aprendidas y datos</h2>'+(state.rules.length?'<div class="list">'+state.rules.map((r,i)=>'<div class="item" style="cursor:default"><b>'+esc(r.match)+'</b><button class="btn ghost small" type="button" data-act="rule-del" data-id="'+i+'">Quitar</button><small>→ '+esc(catById(r.cat).name)+'</small><small></small></div>').join('')+'</div>':'<p class="muted">Cuando cambies la categoría de un movimiento, se recordará para los siguientes del mismo comercio.</p>')
    +'<div class="label" style="margin-top:18px">Tus datos</div><div class="row">'+btn('Exportar copia (JSON)','data-act="export"')+btn('Importar copia','data-act="import"')+btn('Borrar todo','data-act="wipe"','danger')+'</div><p class="note">Versión '+APP_VERSION+' · <a href="actualizar.html">Aplicar cambios de la IA</a></p></section>'
@@ -1767,15 +1844,19 @@ function vMas(){
 }
 
 // ===== Ventana, descargas y acciones =====
-function modal(title,html){$('modal-title').innerHTML=title;$('modal-body').innerHTML=html;if(!$('modal').open)$('modal').showModal();$('modal-body').scrollTop=0;}
+function modal(title,html){$('modal').classList.remove('asset-dialog');$('modal-title').innerHTML=title;$('modal-body').innerHTML=html;if(!$('modal').open)$('modal').showModal();$('modal-body').scrollTop=0;}
 function download(name,text,type='application/json'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 async function copyText(t,msg='Copiado'){try{await navigator.clipboard.writeText(t);toast(msg);}catch(e){modal('Copia este texto','<textarea style="min-height:240px">'+esc(t)+'</textarea>');}}
 const randKey=n=>b64u(crypto.getRandomValues(new Uint8Array(n)));
 const val=id=>$(id)?.value??'';
 const numv=id=>{const v=toNum(val(id));return isFinite(v)?v:null;};
+function openDrawer(){const d=$('mobile-drawer'),s=$('drawer-scrim');if(!d)return;d.classList.add('open');s.classList.add('open');d.setAttribute('aria-hidden','false');document.querySelector('[data-act=drawer]')?.setAttribute('aria-expanded','true');}
+function closeDrawer(){const d=$('mobile-drawer'),s=$('drawer-scrim');if(!d)return;d.classList.remove('open');s.classList.remove('open');d.setAttribute('aria-hidden','true');document.querySelector('[data-act=drawer]')?.setAttribute('aria-expanded','false');}
 async function act(a,el){
   const id=el.dataset.id;
   switch(a){
+   case 'drawer':openDrawer();break;
+   case 'drawer-close':closeDrawer();break;
    case 'import':$('file-in').click();break;
    case 'refresh':await syncBalances(true);break;
    case 'prices':await refreshPrices(true);toast('Precios actualizados');break;
@@ -1818,7 +1899,7 @@ async function act(a,el){
        },'Operación añadida');refreshPrices();}
      $('modal').close();break;}
    case 'op-del':change(()=>{state.ledger=state.ledger.filter(x=>x.id!==id);},'Operación eliminada');$('modal').close();break;
-   case 'asset-save':change(()=>{const x=state.assets[id]=state.assets[id]||{};x.cls=val('as-cls');x.yahoo=val('as-yahoo').trim();x.name=val('as-name').trim();},'Activo guardado');$('modal').close();refreshPrices();break;
+   case 'asset-save':change(()=>{const x=state.assets[id]=state.assets[id]||{};x.cls=val('as-cls');x.yahoo=val('as-yahoo').trim();x.tv=val('as-tv').trim();x.name=val('as-name').trim();},'Activo guardado');$('modal').close();refreshPrices();break;
    case 'add-deriv':editDeriv('');break;
    case 'dv-save':{
      const g=k=>val('dv-'+k),n=k=>numv('dv-'+k);
@@ -1900,7 +1981,8 @@ function afterRender(){
 }
 document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{if(!e.target.closest('#drop')){e.preventDefault();if(e.dataTransfer?.files?.length)importFiles([...e.dataTransfer.files]);}});
-$('modal-close').onclick=()=>$('modal').close();
+$('modal-close').onclick=()=>{$('modal').close();$('modal').classList.remove('asset-dialog');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
 $('toast-undo').onclick=undo;
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(state.settings.theme==='auto')render();});
 
