@@ -2,13 +2,13 @@
   "id": "finanzas-app",
   "name": "Finanzas",
   "short_name": "Finanzas",
-  "description": "Atlas privado para patrimonio, gasto, inversiones y decisiones asistidas.",
+  "description": "Posición financiera privada: cuentas, activos, inversiones, cambios y decisiones asistidas.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b0d10",
-  "theme_color": "#0b0d10",
+  "background_color": "#0a0e12",
+  "theme_color": "#0a0e12",
   "categories": [
     "finance",
     "productivity"

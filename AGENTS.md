@@ -1,29 +1,47 @@
-# AGENTS.md · Finanzas v6
+# AGENTS.md · Finanzas v7
 
-## Regla principal
-Haz cambios en el código real, ejecuta todas las pruebas y no declares éxito sin `TODO OK`. Conserva datos, privacidad y compatibilidad.
+## Misión
+Mejorar la app real sin perder datos ni degradar privacidad, claridad o fiabilidad. Haz cambios en su lugar correcto, ejecuta todas las pruebas y no declares éxito sin `TODO OK`.
 
 ## Invariantes
-1. No cambiar `caudal_v1`, `caudal:`, `X-Caudal-Token` ni el KV `CAUDAL`.
-2. El TOKEN se pinta siempre vacío, enmascarado y nunca se copia a HTML, logs o prompts.
-3. Primero local: un cambio debe persistir antes de usar red.
-4. No introducir servicios obligatorios de pago ni claves con permisos de escritura.
-5. Toda IA es opt-in, minimiza datos y no puede ejecutar operaciones.
-6. Mantener alternativas visibles a los gestos y objetivos táctiles de 44 px en móvil.
-7. No ocultar fallos de sincronización; mostrar estado y reintentar sin perder la cola local.
+1. No cambiar `caudal_v1`, `caudal:`, `X-Caudal-Token`, el KV `CAUDAL` ni el `id` `finanzas-app`.
+2. El TOKEN se pinta vacío y enmascarado; nunca aparece en HTML, logs, capturas ni prompts.
+3. Local-first: persistir antes de usar red. Los fallos deben quedar visibles y reintentarse sin perder cambios.
+4. No introducir pagos obligatorios. Las credenciales de exchanges son solo lectura.
+5. La IA es opt-in, usa mínimos datos, no ejecuta operaciones y no promete rentabilidad.
+6. Toda función accesible por gesto tiene botón alternativo. Objetivos táctiles principales: 44 px en móvil.
+7. Una aportación, importación inicial o traspaso no puede presentarse como rentabilidad.
+8. No rellenar huecos con módulos gigantes: el escritorio es denso; el móvil prioriza y secuencia.
 
-## Flujo de diseño obligatorio
-`concepto → 3 direcciones → elección → diseño → render PC/móvil → crítica → refinado`.
-Evita tarjetas redondeadas repetitivas, gradientes decorativos, jerarquía débil y plantillas genéricas. El concepto actual es **Atlas financiero**.
+## Arquitectura
+- `index.html`: estado, migración, importadores, finanzas, UI, sincronización y Copiloto.
+- `worker.js` w5: CORS/origen, precios, exchanges, mercado, IA y KV.
+- `sw.js`: caché v7, actualización y modo sin conexión.
+- `manifest.json`: identidad PWA estable.
+- `actualizar.html`: aplica parches propuestos por IA en una copia y los valida.
+- `tests/`: navegador integral y Worker.
+- `tools/`: contexto, mapa y guía.
 
-## Antes de terminar
-- `node tests/worker_smoke.mjs`
-- `python tests/smoke.py`
-- Probar oscuro/claro, 390×844 y escritorio ≥1280 px.
-- Confirmar que privacidad oculta importe y saldo de cada movimiento.
-- Confirmar Worker w4 al abrir Ajustes.
-- Simular cambios simultáneos, borrado, desconexión, conflicto y recuperación.
-- Revisar que v6 coincide en `index.html`, contexto, mapa, guía y service worker.
+## Jerarquía del producto
+- Inicio: posición general → cambios reales → cuentas → activos → flujo → decisiones.
+- Mercados: panorama → salud/datos → decisiones → posiciones → exposición → escenarios → radar/noticias.
+- Móvil y PC son composiciones distintas; no basta con apilar la cuadrícula de PC.
+- Azul: posición/cuentas. Bronce: inversión. Verde petróleo: flujo. Ciruela: inteligencia. Verde/rojo: estado.
 
-## Automatización e innovación
-En cada versión, inventaría tareas manuales. Automatiza gratis las seguras; si una requiere credenciales, decisión financiera o permiso del sistema, redúcela a un toque y documenta el límite. Evalúa explícitamente automatización e innovación preventiva en el consejo de calidad.
+## Flujo de cambio obligatorio
+1. Lee `CONTEXTO_FINANZAS.md` y `MAPA_DEL_CODIGO.md`.
+2. Formula el cambio y sus riesgos para datos, móvil, PC y Worker.
+3. Modifica la función original; no añadas parches que reasignen funciones.
+4. Actualiza versión/revisión, comentarios, contexto, mapa, pruebas y guía si cambia el uso.
+5. Ejecuta `node tests/worker_smoke.mjs` y `python tests/smoke.py`.
+6. Renderiza 390×844 y 1440×900 en claro y oscuro; revisa desbordamiento, contraste, densidad y estados vacíos.
+7. Solo entonces entrega.
+
+## Comprobaciones críticas
+- Importar Santander/Binance/Kraken y reimportar sin duplicados.
+- Privacidad oculta importes y saldos de movimientos.
+- Historial no incluye salto artificial desde cero.
+- Sincronización mezcla cambios simultáneos y respeta borrados.
+- HTTP 403 explica cómo corregir `ALLOWED_ORIGIN`.
+- Worker w5, Gemini local/real, radar, noticias y análisis técnico.
+- Pantallas con y sin inversiones; claro/oscuro; 360–1920 px.

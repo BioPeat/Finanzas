@@ -43,7 +43,7 @@ async def browser_checks():
     async def worker(route):
         r = route.request; p = r.url.split('worker.test', 1)[1]
         if r.headers.get('x-caudal-token') != 'TOKEN-PRUEBA': return await route.fulfill(status=401, json={'error': 'Código incorrecto'})
-        if p.startswith('/ping'): return await route.fulfill(json={'ok': True, 'version': 'w4', 'kv': True, 'originProtected': True, 'exchanges': {'binance': True, 'kraken': False, 'kucoin': False, 'okx': False, 'bybit': False}})
+        if p.startswith('/ping'): return await route.fulfill(json={'ok': True, 'version': 'w5', 'kv': True, 'originProtected': True, 'exchanges': {'binance': True, 'kraken': False, 'kucoin': False, 'okx': False, 'bybit': False}})
         if p.startswith('/balances'): return await route.fulfill(json={'exchanges': {'binance': {'assets': {'BTC': 0.05, 'ETH': 1, 'USDT': 200, 'EUR': 30}, 'positions': [{'symbol': 'BTCUSDT', 'amt': 0.01, 'entry': 60000, 'mark': 65000, 'pnl': 50, 'lev': 5, 'liq': 50000}]}}, 'errors': {}})
         if p.startswith('/prices'): return await route.fulfill(json={'eurusd': 1.08, 'crypto': {'BTC': {'usd': 65000, 'chg': 2.1}, 'ETH': {'usd': 3000, 'chg': -1}, 'USDT': {'usd': 1, 'chg': 0}, 'SOL': {'usd': 150, 'chg': 9}, 'BNB': {'usd': 600, 'chg': 0}}, 'yahoo': {'VWCE.DE': {'price': 120, 'cur': 'EUR', 'chg': 0.5}}})
         if p.startswith('/hist'):
@@ -88,8 +88,8 @@ async def browser_checks():
         print('5. Worker, exchanges y precios')
         await ev("go('ajustes')"); await ev("$('set-worker').value='https://worker.test';$('set-token').value='TOKEN-PRUEBA'")
         await ev("document.querySelector('[data-act=\"worker-test\"]').click()"); await pg.wait_for_timeout(800)
-        r = await ev("({acc:state.accounts.find(a=>a.api==='binance')?.name,btc:priceEUR('BTC'),nw:netWorth().total,der:derivRows().length,version:state.workerInfo?.version==='w4'&&workerInfoHTML(state.workerInfo).includes('w4')})")
-        ok(f"Worker w4 y Binance conectados, patrimonio {round(r['nw'])} €") if r['version'] and r['acc'] == 'Binance' and r['btc'] > 50000 and r['nw'] > 4000 and r['der'] == 1 else fail('Worker/precios: ' + str(r))
+        r = await ev("({acc:state.accounts.find(a=>a.api==='binance')?.name,btc:priceEUR('BTC'),nw:netWorth().total,der:derivRows().length,version:state.workerInfo?.version==='w5'&&workerInfoHTML(state.workerInfo).includes('w5')})")
+        ok(f"Worker w5 y Binance conectados, patrimonio {round(r['nw'])} €") if r['version'] and r['acc'] == 'Binance' and r['btc'] > 50000 and r['nw'] > 4000 and r['der'] == 1 else fail('Worker/precios: ' + str(r))
         check('Worker')
         print('6. Historial de exchanges e impuestos')
         for f in ['binance_ejemplo.csv', 'kraken_ejemplo.csv']:
@@ -155,11 +155,16 @@ async def browser_checks():
         await ctx3.close()
         print('7c. Funciones nuevas')
         await ev("go('resumen')")
-        r = await ev("({hero:!!document.querySelector('.atlas-hero .big'),ledger:document.querySelectorAll('.ledger-cell').length,acc:document.querySelectorAll('.acard[data-acc]').length,signals:document.querySelectorAll('.signal-row').length,cmp:!!document.querySelector('[data-chart=cmp]'),line:!!document.querySelector('[data-chart=nw]'),cats:document.querySelectorAll('.crow').length,safe:!!document.querySelector('.safe')})")
-        ok('Inicio PC v6: Atlas, banda financiera, cuentas, señales, ritmo y categorías') if r['hero'] and r['ledger'] >= 4 and r['acc'] >= 2 and r['signals'] >= 1 and r['cmp'] and r['line'] and r['cats'] >= 1 and r['safe'] else fail('Inicio incompleto: ' + str(r))
+        r = await ev("({hero:!!document.querySelector('.position-hero .position-value'),changes:document.querySelectorAll('.change-cell').length,acc:document.querySelectorAll('.account-line').length,attention:document.querySelectorAll('.decision-line').length,cmp:!!document.querySelector('[data-chart=cmp]'),line:!!document.querySelector('[data-chart=nw]'),cats:document.querySelectorAll('.crow').length,assets:document.querySelectorAll('.asset-line').length})")
+        ok('Inicio PC v7: posición, cambios reales, cuentas, activos, flujo y decisiones') if r['hero'] and r['changes'] >= 3 and r['acc'] >= 2 and r['cmp'] and r['line'] and r['cats'] >= 1 and r['assets'] >= 2 else fail('Inicio incompleto: ' + str(r))
+        # La primera importación no puede aparecer como ganancia desde cero.
+        r = await ev("(()=>{const p=netSeries(365).pts;return {n:p.length,first:p[0]?.[1],second:p[1]?.[1],fake:p.length>1&&Math.abs(p[0][1])<5&&Math.abs(p[1][1])>100}})()")
+        ok('La importación inicial no se presenta como rentabilidad') if not r['fake'] else fail('Salto falso al importar: '+str(r))
         await ev("go('inversiones')")
-        r = await ev("({hold:document.querySelectorAll('.hold').length,donut:!!document.querySelector('.donut circle[data-seg]'),risk:document.querySelectorAll('.risk-strip>div').length})")
-        ok('Mercados: posiciones, reparto y consola de riesgo') if r['hold'] >= 2 and r['donut'] and r['risk'] >= 5 else fail('Mercados incompleto: ' + str(r))
+        r = await ev("({hold:document.querySelectorAll('.hold').length,donut:!!document.querySelector('.donut circle[data-seg]'),health:!!document.querySelector('.health-panel'),decisions:!!document.querySelector('.decision-panel'),scenarios:document.querySelectorAll('[data-scenario]').length})")
+        ok('Mercados v7: posiciones, exposición, salud, decisiones y escenarios') if r['hold'] >= 2 and r['donut'] and r['health'] and r['decisions'] and r['scenarios'] == 4 else fail('Mercados incompleto: ' + str(r))
+        await pg.locator('[data-scenario="20"]').click()
+        ok('El simulador de cartera es interactivo') if await ev('marketShock===20') and await pg.locator('[data-scenario="20"]').get_attribute('aria-pressed') == 'true' else fail('Simulador no interactivo')
         await ev("assetDetail('BTC')")
         r = await ev("({frame:document.querySelector('.tv-frame')?.src||'',symbol:tvSymbol('BTC'),open:$('modal').open})")
         ok('Gráfico TradingView integrado por activo') if 'tradingview.com/widgetembed' in r['frame'] and r['symbol'] == 'BINANCE:BTCUSDT' and r['open'] else fail('TradingView: ' + str(r))
@@ -194,7 +199,7 @@ async def browser_checks():
         ok('Automatización visible, copia diaria y dispositivo identificado') if r['auto'] and r['backup'] and r['device'] else fail('Automatización/resiliencia: ' + str(r))
         await ev("state.settings.aiProvider='local';save(false);go('copiloto')")
         r = await ev("({stage:!!document.querySelector('.ai-stage'),actions:document.querySelectorAll('.ai-menu [data-act=ai-run]').length})")
-        ok('Copiloto multiuso con cuatro lecturas') if r['stage'] and r['actions'] == 4 else fail('Copiloto: ' + str(r))
+        ok('Copiloto multiuso con seis lecturas') if r['stage'] and r['actions'] == 6 else fail('Copiloto: ' + str(r))
         await ev("runAI('brief')"); await pg.wait_for_timeout(150)
         ok('Copiloto local guarda un parte sin exponer claves') if await ev("state.aiNotes.length>0&&state.aiNotes[0].text.includes('Modo local')") else fail('Copiloto local no responde')
         check('Funciones nuevas')
@@ -217,6 +222,16 @@ async def browser_checks():
                 except Exception as e: fail(f'Botón «{info}»: {str(e)[:120]}')
                 check(f'Botón «{info}»')
         ok(f'{n} botones pulsados sin errores')
+        print('9. Responsive, contraste y jerarquía')
+        for width,height in [(360,800),(390,844),(412,915),(768,1024),(1024,768),(1440,900),(1920,1080)]:
+            await pg.set_viewport_size({'width':width,'height':height}); await ev("go('resumen')")
+            r=await ev("(()=>{const vw=document.documentElement.clientWidth,buttons=[...document.querySelectorAll('button')].filter(x=>x.offsetParent!==null),small=buttons.sort((a,b)=>Math.min(a.getBoundingClientRect().width,a.getBoundingClientRect().height)-Math.min(b.getBoundingClientRect().width,b.getBoundingClientRect().height))[0];return {overflow:document.documentElement.scrollWidth-vw,minTap:Math.min(small.getBoundingClientRect().width,small.getBoundingClientRect().height),small:(small.className||small.textContent).toString().slice(0,40),off:[...document.querySelectorAll('body *')].filter(x=>{const r=x.getBoundingClientRect();return r.right>vw+1||r.left<-1}).slice(0,8).map(x=>[x.tagName,x.className,x.getBoundingClientRect().left,x.getBoundingClientRect().right]),mobile:!!document.querySelector('.v7-mobile'),hero:parseFloat(getComputedStyle(document.querySelector('.position-value')).fontSize),body:parseFloat(getComputedStyle(document.body).fontSize)}})()")
+            if r['overflow']>1: fail(f'Desbordamiento horizontal a {width}px: {r}')
+            if width<1024 and (not r['mobile'] or r['hero']<r['body']*2.5): fail(f'Jerarquía móvil débil a {width}px: {r}')
+        ok('Auditoría responsive 360–1920 px sin desbordamiento y con jerarquía móvil')
+        await pg.set_viewport_size({'width':390,'height':844}); await ev("go('inversiones')")
+        await pg.locator('[data-invview="explorar"]').click()
+        ok('Mercados móvil cambia entre Panorama, Posiciones y Explorar') if await ev("invView==='explorar'&&!!document.querySelector('.radar-panel')") else fail('Navegación móvil de mercados')
         await b.close()
 
 async def main():

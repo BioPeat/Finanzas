@@ -2,7 +2,7 @@
 // 1) Saldos mediante APIs OFICIALES y claves de SOLO LECTURA; 2) precios; 3) copia cifrada entre dispositivos.
 // Obligatorio: TOKEN y KV enlazado como CAUDAL. Recomendado: ALLOWED_ORIGIN (p. ej. https://usuario.github.io).
 // Exchanges opcionales: BINANCE_*, KRAKEN_*, KUCOIN_*, OKX_* y BYBIT_* (consulta README.md).
-const W_VERSION = 'w4';
+const W_VERSION = 'w5';
 const enc = new TextEncoder();
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b)));
@@ -15,7 +15,7 @@ async function hmac(hash, key, msg) {
 async function getJSON(url, init = {}) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 18000);
   try {
-    const r = await fetch(url, { ...init, signal: ctl.signal, headers: { 'User-Agent': 'Finanzas/6 read-only', ...(init.headers || {}) } });
+    const r = await fetch(url, { ...init, signal: ctl.signal, headers: { 'User-Agent': 'Finanzas/7 read-only', ...(init.headers || {}) } });
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) { }
     if (!r.ok) throw new Error((j && (j.msg || j.message || j.retMsg || j.error_description || (Array.isArray(j.error) && j.error.join(', ')))) || ('HTTP ' + r.status));
     return j;
@@ -158,7 +158,7 @@ async function market(url) {
 // ---------- Copiloto multi-proveedor: claves solo en secretos del Worker ----------
 function aiProviders(env) { return { gemini:!!env.GEMINI_API_KEY, openai:!!env.OPENAI_API_KEY, anthropic:!!env.ANTHROPIC_API_KEY, custom:!!(env.AI_BASE_URL && env.AI_API_KEY) }; }
 function aiPrompt(payload) {
-  const tasks = { brief:'Da un parte operativo de hoy: hechos, 3 prioridades y 3 preguntas.', spend:'Analiza ritmo de gasto, categorías, recurrencias y anomalías. Propón comprobaciones concretas.', portfolio:'Analiza concentración, liquidez, cambio diario y riesgos. No des órdenes de compra o venta; formula escenarios y preguntas.', plan:'Propón un plan mensual prudente con escenarios base, adverso y holgado.' };
+  const tasks = { brief:'Da un parte operativo de hoy: hechos, 3 prioridades y 3 preguntas.', spend:'Analiza ritmo de gasto, categorías, recurrencias y anomalías. Propón comprobaciones concretas.', portfolio:'Analiza concentración, liquidez, cambio diario y riesgos. No des órdenes de compra o venta; formula escenarios y preguntas.', plan:'Propón un escenario mensual prudente con caso base, adverso y holgado.', risk:'Ordena los riesgos a 30 días por impacto y urgencia; distingue liquidez, concentración, datos y gastos.', quality:'Audita la calidad de los datos: precios, histórico, costes FIFO, copias y elementos que impiden conclusiones fiables.' };
   return 'Eres el copiloto privado de una app de finanzas personales en España. ' + (tasks[payload.kind] || tasks.brief) + ' Separa HECHOS, INTERPRETACIÓN, ACCIONES y DATOS QUE FALTAN. No inventes precios, rentabilidades ni normativa. No prometas beneficios. Recuerda que no es asesoramiento financiero ni fiscal. Datos agregados JSON:\n' + JSON.stringify(payload);
 }
 async function askAI(env, req) {
@@ -167,7 +167,7 @@ async function askAI(env, req) {
   if (!provider || !available[provider]) throw new Error('El proveedor elegido no está configurado en los secretos del Worker.');
   const prompt = aiPrompt(req.payload || {}); let text = '', model = req.model || '';
   if (provider === 'gemini') {
-    model = model || env.GEMINI_MODEL || 'gemini-2.0-flash';
+    model = model || env.GEMINI_MODEL || 'gemini-2.5-flash';
     const r = await getJSON('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(env.GEMINI_API_KEY), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.25,maxOutputTokens:1400}}) });
     text = r.candidates && r.candidates[0] && r.candidates[0].content && r.candidates[0].content.parts.map(x=>x.text||'').join('');
   } else if (provider === 'anthropic') {
@@ -184,15 +184,20 @@ async function askAI(env, req) {
   if (!text) throw new Error('La IA no devolvió texto.'); return { text, provider, model };
 }
 
-function cors(req, env) {
-  const o = req.headers.get('Origin') || '', allowed = String(env.ALLOWED_ORIGIN || '').replace(/\/$/, '');
-  return { 'Access-Control-Allow-Origin': allowed || '*', 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS', 'Access-Control-Allow-Headers': 'X-Caudal-Token,Content-Type', 'Access-Control-Max-Age': '86400', 'Cache-Control': 'no-store' };
+function cors(req, env, revealError = false) {
+  const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowed = String(env.ALLOWED_ORIGIN || '').replace(/\/$/, '');
+  const exposed = revealError && origin ? origin : (allowed || '*');
+  return { 'Access-Control-Allow-Origin': exposed, 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS', 'Access-Control-Allow-Headers': 'X-Caudal-Token,Content-Type', 'Access-Control-Max-Age': '86400', 'Cache-Control': 'no-store' };
 }
 export default {
   async fetch(req, env) {
-    const H = cors(req, env), respond = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...H, 'Content-Type': 'application/json; charset=utf-8' } });
     const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowed = String(env.ALLOWED_ORIGIN || '').replace(/\/$/, '');
-    if (allowed && origin && origin !== allowed) return respond({ error: 'Origen no permitido' }, 403);
+    // Reveal only the diagnostic to the calling origin, so the browser can explain a 403 instead of hiding it as a generic CORS failure.
+    if (allowed && origin && origin !== allowed) {
+      const H = cors(req, env, true);
+      return new Response(JSON.stringify({ error: 'Origen no permitido', expected: allowed, received: origin, fix: 'ALLOWED_ORIGIN debe coincidir exactamente con el origen de la app, sin barra final.' }), { status: 403, headers: { ...H, 'Content-Type': 'application/json; charset=utf-8' } });
+    }
+    const H = cors(req, env), respond = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...H, 'Content-Type': 'application/json; charset=utf-8' } });
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: H });
     const url = new URL(req.url);
     if (!env.TOKEN || String(env.TOKEN).length < 20) return respond({ error: 'Falta TOKEN o es demasiado corto (mínimo 20 caracteres).' }, 500);

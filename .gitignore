@@ -1,8 +1,15 @@
+# Datos y secretos personales
+*.env
+.env*
+Finanzas_copia_*.json
+*_privado.json
+TOKEN*
+secrets*
+
+# Generados localmente
+__pycache__/
+*.pyc
 .DS_Store
 Thumbs.db
-__pycache__/
-*.py[cod]
 playwright-report/
 test-results/
-_app.js
-*.log

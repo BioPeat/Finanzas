@@ -1,4 +1,4 @@
-const CACHE='finanzas-v6-3';
+const CACHE='finanzas-v7-7';
 const CORE=['./','index.html','actualizar.html','manifest.json','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).catch(()=>{}));});
 self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith('finanzas-')&&k!==CACHE)await caches.delete(k);await self.clients.claim();})()));

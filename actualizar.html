@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Finanzas v6 · aplicar cambios de la IA</title>
+<title>Finanzas v7 · aplicar cambios de la IA</title>
 <style>
 :root{--bg:#f4f6f8;--panel:#fff;--line:#dfe5e9;--ink:#182027;--ink2:#4e5d69;--up:#16863d;--down:#d70015;--warn:#b65d00;--brand:#006bd6}
 @media (prefers-color-scheme:dark){:root{--bg:#0a0d10;--panel:#141a20;--line:#222c35;--ink:#f4f7f9;--ink2:#acb7c1;--up:#30d158;--down:#ff453a;--warn:#ff9f0a;--brand:#52a8ff}}
@@ -35,7 +35,7 @@ ul.checks{list-style:none;padding:0;margin:8px 0}ul.checks li{padding:4px 0;bord
 "use strict";
 const $=id=>document.getElementById(id);
 // Si alguno de estos textos desaparece, el cambio se rechaza (protegen tus datos guardados).
-const PROTECTED=["STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function stampChanges(","function taxCompute(","function openDrawer(","function gestureStart(","function investmentSummary(","function runAI(","function autoBackup(","function installApp(","function parseOFX(","function tvSymbol(","LOCAL_ONLY","'caudal:'","Solo se usan APIs oficiales y gratuitas","type=\"password\" id=\"set-token\" value=\"\""];
+const PROTECTED=["function reliableHistory(","function changeWindow(","function portfolioScore(","STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function stampChanges(","function taxCompute(","function openDrawer(","function gestureStart(","function investmentSummary(","function runAI(","function autoBackup(","function installApp(","function parseOFX(","function tvSymbol(","LOCAL_ONLY","'caudal:'","Solo se usan APIs oficiales y gratuitas","type=\"password\" id=\"set-token\" value=\"\""];
 let pub='',current='',result='',errText='',reviewText='',prev=[],parts=1;
 const ver=t=>+((t.match(/APP_VERSION='v(\d+)'/)||[])[1]||0),rev=t=>+((t.match(/APP_REVISION=(\d+)/)||[])[1]||0);
 function setCurrent(t,src){pub=t;current=t;parts=1;$('cur').innerHTML='Versión actual: <b>v'+ver(t)+'</b> · '+src;}
