@@ -1,0 +1,8 @@
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]
+playwright-report/
+test-results/
+_app.js
+*.log
