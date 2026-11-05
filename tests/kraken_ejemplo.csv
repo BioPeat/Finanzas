@@ -1,5 +1,0 @@
-"txid","refid","time","type","subtype","aclass","asset","wallet","amount","fee","balance"
-"L1","R1","2025-02-01 12:00:00","deposit","","currency","ZEUR","spot / main","500","0","500"
-"L2","T1","2025-02-02 12:00:00","trade","","currency","ZEUR","spot / main","-500","0.8","0"
-"L3","T1","2025-02-02 12:00:00","trade","","currency","XETH","spot / main","0.2","0","0.2"
-"L4","S1","2025-08-01 00:00:00","staking","","currency","ETH.S","earn / bonded","0.001","0","0.001"
