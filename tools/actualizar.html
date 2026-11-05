@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Finanzas v6 · aplicar cambios de la IA</title>
+<style>
+:root{--bg:#f4f6f8;--panel:#fff;--line:#dfe5e9;--ink:#182027;--ink2:#4e5d69;--up:#16863d;--down:#d70015;--warn:#b65d00;--brand:#006bd6}
+@media (prefers-color-scheme:dark){:root{--bg:#0a0d10;--panel:#141a20;--line:#222c35;--ink:#f4f7f9;--ink2:#acb7c1;--up:#30d158;--down:#ff453a;--warn:#ff9f0a;--brand:#52a8ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:860px;margin:0 auto;padding:28px 16px 70px}h1{font:730 30px/1.1 -apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:-.035em;margin:0 0 5px}h2{font-size:16px;margin:0 0 8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}
+.muted{color:var(--ink2);font-size:13.5px}button,.btn{display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 14px inherit;cursor:pointer;margin:4px 6px 4px 0}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff}button:disabled{opacity:.5}
+textarea,input{width:100%;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:10px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace}textarea{min-height:220px}
+ul.checks{list-style:none;padding:0;margin:8px 0}ul.checks li{padding:4px 0;border-bottom:1px solid var(--line)}.ok{color:var(--up)}.bad{color:var(--down)}.warn{color:var(--warn)}
+.big{font:600 20px Georgia,serif;margin:4px 0 10px}details summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;font-size:12px;max-height:300px;overflow:auto}ol li{margin:4px 0}
+</style></head><body><main>
+<h1>Aplicar cambios de la IA</h1><p class="muted" id="cur">Cargando la versión actual…</p>
+<details class="card"><summary>Cómo se usa (léelo una vez)</summary><ol>
+<li><b>Paso 1:</b> escribe 1-3 palabras de lo que quieres cambiar y descarga el archivo enfocado. Adjúntalo en un chat nuevo de tu Gem «Finanzas Dev» (o del proyecto de Claude) con tu petición.</li>
+<li><b>Paso 2:</b> pega la respuesta de la IA y pulsa «Aplicar y comprobar». Se aplica sobre una copia y se prueba la app entera en una caja aislada: tus datos reales no se tocan.</li>
+<li><b>Si sale rojo:</b> «Copiar mensaje para la IA» → pégalo en el mismo chat → pega aquí su respuesta nueva. Si la IA trae solo los bloques corregidos («@@@ SOLO CORREGIDOS»), se combinan con los anteriores.</li>
+<li><b>Si la IA lo dividió en partes:</b> cuando la parte 1 salga verde, pulsa «Aplicar la siguiente parte encima» y pega la parte 2.</li>
+<li><b>Si sale verde:</b> descarga el index.html nuevo, cópialo en tu carpeta del repositorio (Reemplazar) y en GitHub Desktop: Commit to main → Push origin. GitHub vuelve a probarlo todo y actualiza solo CONTEXTO_FINANZAS y MAPA.</li></ol><p class="muted"><b>Regla de conexiones:</b> la IA no puede añadir servicios de pago. Primero debe usar importación o APIs oficiales y gratuitas; si no existe una opción gratuita, se queda en importación.</p></details>
+<div class="card"><h2>Paso 1 · Archivo para tu IA</h2>
+<input type="text" id="kw" placeholder="Ej.: presupuestos, impuestos, gráfica">
+<button class="primary" id="dl-focus">Descargar archivo enfocado (recomendado)</button><button id="dl-light">Archivo sin estilos</button><button id="dl-full">Archivo completo</button>
+<p class="muted" id="focus-info"></p><label class="muted">¿No carga sola? Elige index.html a mano: <input type="file" id="pick" accept=".html,.txt"></label></div>
+<div class="card"><h2>Paso 2 · Pega la respuesta de la IA</h2><textarea id="patch" placeholder="@@@ BUSCAR 1&#10;…&#10;@@@ CAMBIAR POR&#10;…&#10;@@@ FIN"></textarea>
+<button class="primary" id="run">Aplicar y comprobar</button></div>
+<div class="card" id="res" hidden><div class="big" id="verdict"></div><ul class="checks" id="checks"></ul>
+<div id="okbox" hidden><button class="primary" id="dl-new">Descargar index.html nuevo</button><button id="copy-review">Copiar texto para revisar</button><button id="chain">Aplicar la siguiente parte encima</button><button id="dl-old">Guardar también la versión anterior</button></div>
+<div id="badbox" hidden><button class="primary" id="copy-err">Copiar mensaje para la IA</button></div>
+<details><summary class="muted">Detalle técnico</summary><pre id="log"></pre></details></div>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+// Si alguno de estos textos desaparece, el cambio se rechaza (protegen tus datos guardados).
+const PROTECTED=["STORE='caudal_v1'","function migrate(","function save(","function render(","function syncNow(","function mergeStates(","function stampChanges(","function taxCompute(","function openDrawer(","function gestureStart(","function investmentSummary(","function runAI(","function autoBackup(","function installApp(","function parseOFX(","function tvSymbol(","LOCAL_ONLY","'caudal:'","Solo se usan APIs oficiales y gratuitas","type=\"password\" id=\"set-token\" value=\"\""];
+let pub='',current='',result='',errText='',reviewText='',prev=[],parts=1;
+const ver=t=>+((t.match(/APP_VERSION='v(\d+)'/)||[])[1]||0),rev=t=>+((t.match(/APP_REVISION=(\d+)/)||[])[1]||0);
+function setCurrent(t,src){pub=t;current=t;parts=1;$('cur').innerHTML='Versión actual: <b>v'+ver(t)+'</b> · '+src;}
+fetch('index.html?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject()).then(t=>setCurrent(t,'cargada de la web')).catch(()=>$('cur').textContent='No se pudo cargar sola: elige el index.html a mano.');
+$('pick').onchange=async e=>{const f=e.target.files[0];if(f)setCurrent(await f.text(),f.name);};
+function download(name,text,type='text/plain'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),800);}
+const appScript=t=>{const a=t.indexOf('<script id="app">');if(a<0)return null;const s=a+17;return t.slice(s,t.indexOf('</'+'script>',s));};
+function lightVersion(t){const a=t.indexOf('<style id="app-style">'),b=t.indexOf('</style><!--FIN-CSS-->');return a<0||b<0?t:t.slice(0,a)+'<style id="app-style">\n/* [CSS OMITIDO: para estilos nuevos usa BUSCAR «</style><!--FIN-CSS-->»] */\n'+t.slice(b);}
+const nrm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function chunks(js){const L=js.split('\n'),out=[];let cur=[];for(const l of L){if(/^(?:async\s+function|function|const|let|document\.|\$\(|\/\/ =====)/.test(l)&&cur.length){out.push(cur.join('\n'));cur=[];}cur.push(l);}if(cur.length)out.push(cur.join('\n'));return out;}
+function focused(t,words){
+  const a=t.indexOf('<script id="app">'),s=a+17,e=t.indexOf('</'+'script>',s),ch=chunks(t.slice(s,e)),kw=nrm(words).split(/[,;\s]+/).filter(w=>w.length>=3);
+  let kept=0,skip=0;const out=[];
+  ch.forEach((c,i)=>{const need=i===0||/APP_VERSION=|\/\/ ===== Arranque|^function render\(|^function migrate\(/m.test(c)||kw.some(k=>nrm(c).includes(k));if(need){if(skip)out.push('/* … '+skip+' trozos omitidos … */');skip=0;out.push(c);kept++;}else skip++;});
+  if(skip)out.push('/* … '+skip+' trozos omitidos … */');
+  return {text:lightVersion(t.slice(0,s))+'\n/* [ARCHIVO ENFOCADO para «'+words+'»: '+kept+' de '+ch.length+' trozos. Solo puedes BUSCAR texto que veas aquí. Si falta una función, dile a Diego su nombre.] */\n'+out.join('\n')+'\n'+t.slice(e),kept,total:ch.length};
+}
+$('dl-focus').onclick=()=>{if(!current)return alert('Primero carga index.html');const w=$('kw').value.trim();if(w.length<3)return alert('Escribe 1-3 palabras de lo que quieres cambiar.');const f=focused(current,w);$('focus-info').textContent='Archivo enfocado: '+Math.round(f.text.length/1024)+' KB ('+f.kept+' de '+f.total+' trozos).';download('Finanzas_enfocado_v'+ver(current)+'.txt',f.text);};
+$('dl-light').onclick=()=>current&&download('Finanzas_sin_estilos_v'+ver(current)+'.txt',lightVersion(current));
+$('dl-full').onclick=()=>current&&download('Finanzas_completo_v'+ver(current)+'.txt',current);
+function unfence(s){return s.replace(/^\s*```[a-zA-Z]*[ \t]*\n/,'').replace(/\n[ \t]*```\s*$/,'');}
+function parse(txt){txt=txt.replace(/\r\n/g,'\n');const re=/@@@ BUSCAR[ \t]*(\d*)[^\n]*\n([\s\S]*?)\n@@@ CAMBIAR POR[^\n]*\n([\s\S]*?)\n?@@@ FIN/g,out=[];let m,i=0;while((m=re.exec(txt))){i++;out.push({n:m[1]?+m[1]:i,find:unfence(m[2]),repl:unfence(m[3])});}out.partial=/^[ \t]*@@@ SOLO CORREGIDOS/mi.test(txt);return out;}
+function count(h,n){if(!n)return 0;let c=0,i=0;while((i=h.indexOf(n,i))>=0){c++;i+=n.length;}return c;}
+function flex(h,needle){const n=needle.trim();if(n.length<6)return [];const e=c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');let re;try{re=new RegExp(n.split(/\s+/).map(p=>[...p].map(c=>/['‘’]/.test(c)?"['‘’]":/["“”]/.test(c)?'["“”]':e(c)).join('')).join('\\s+'),'g');}catch(x){return [];}const out=[];let m;while((m=re.exec(h))&&out.length<3)out.push([m.index,m.index+m[0].length]);return out;}
+// Ejecuta la app modificada en una caja aislada (sin acceso a tus datos) y la recorre entera.
+function sandbox(html){return new Promise(res=>{
+  const probe='<script>window.__e=[];addEventListener("error",e=>__e.push(String(e.message)));addEventListener("load",()=>setTimeout(()=>{try{state=migrate({accounts:[{id:"a",name:"Banco",kind:"bank"},{id:"b",name:"Exchange",kind:"exchange"}],tx:[{id:"t1",acc:"a",date:"2026-01-05",desc:"COMPRA MERCADONA, MADRID",amount:-20,bal:100,cat:"super"},{id:"t2",acc:"a",date:"2026-01-06",desc:"TRANSFERENCIA DE EMPRESA, CONCEPTO NOMINA",amount:1500,bal:1600,cat:"nomina"}],ledger:[{id:"l1",acc:"b",t:"2025-01-01 10:00:00",asset:"BTC",change:0.1,kind:"trade",ref:"r"},{id:"l2",acc:"b",t:"2025-01-01 10:00:00",asset:"EUR",change:-5000,kind:"trade",ref:"r"},{id:"l3",acc:"b",t:"2025-06-01 10:00:00",asset:"BTC",change:-0.05,kind:"trade",ref:"s"},{id:"l4",acc:"b",t:"2025-06-01 10:00:00",asset:"EUR",change:3000,kind:"trade",ref:"s"}],derivs:[{id:"d",instr:"BTC perp",type:"perpetuo",side:"long",size:0.01,entry:60000,mark:65000,quote:"USD"}],budgets:{super:100},goals:[{id:"g",name:"Viaje",target:1000,saved:200}],prices:{BTC:{eur:60000,usd:65000,chg:1}}});for(const v of ["resumen","movimientos","inversiones","objetivos","impuestos","cuentas","ajustes","mas"])go(v);quickAdd();$("modal").close();}catch(x){__e.push("Al navegar: "+x.message)}parent.postMessage({caudalTest:1,ready:document.body.dataset.ready,errors:__e},"*")},900));<\/script>';
+  const f=document.createElement('iframe');f.sandbox='allow-scripts';f.style.display='none';
+  const done=d=>{removeEventListener('message',on);f.remove();res(d);};const on=e=>{if(e.data&&e.data.caudalTest)done(e.data);};
+  addEventListener('message',on);setTimeout(()=>done({ready:'',errors:['La app no arrancó en 8 s']}),8000);
+  f.srcdoc=html.replace('<head>','<head>'+probe);document.body.append(f);});}
+$('run').onclick=async()=>{
+  const checks=[],log=[];let fail=false;const add=(ok,t)=>{checks.push([ok,t]);if(ok===false)fail=true;};
+  const btn=$('run');btn.disabled=true;btn.textContent='Comprobando…';let extra='';
+  try{
+    if(!current)throw Error('Primero carga index.html.');
+    let blocks=parse($('patch').value);if(!blocks.length)throw Error('No encuentro bloques «@@@ BUSCAR … @@@ CAMBIAR POR … @@@ FIN». Pega la respuesta entera.');
+    if(blocks.partial){if(!prev.length)throw Error('«@@@ SOLO CORREGIDOS» sin bloques anteriores: pide a la IA la respuesta completa.');const m=new Map(prev.map(b=>[b.n,b]));blocks.forEach(b=>m.set(b.n,b));blocks=[...m.values()].sort((a,b)=>a.n-b.n);add(null,'Corrección parcial combinada con los bloques anteriores');}
+    prev=blocks;let t=current;
+    for(const b of blocks){const c=count(t,b.find);
+      if(c===1){t=t.replace(b.find,()=>b.repl);continue;}
+      if(c===0){const fm=flex(t,b.find);if(fm.length===1){t=t.slice(0,fm[0][0])+b.repl.trim()+t.slice(fm[0][1]);add(null,'Bloque '+b.n+': localizado ajustando espacios o comillas');continue;}
+        const miss=b.find.split('\n').map(x=>x.trim()).find(x=>x.length>10&&!t.includes(x));add(false,'Bloque '+b.n+': el texto a BUSCAR no existe en el archivo'+(miss?'. Primera línea que no encuentro: «'+miss.slice(0,150)+'»':'')+'. Cópialo literalmente.');}
+      else add(false,'Bloque '+b.n+': el texto a BUSCAR aparece '+c+' veces. Debe ser único: añade más contexto.');}
+    if(fail)throw Error('stop');
+    add(true,blocks.length+' cambios aplicados donde tocaba');
+    const v0=ver(pub),v1=ver(t);add(v1===v0+1,'Versión v'+v0+' → v'+v1+(v1===v0+1?'':' (debe subir exactamente 1)'));
+    add(new RegExp('\\n\\s+v'+v1+' · ').test(t),'Línea v'+v1+' en el Registro de cambios');
+    const miss=PROTECTED.filter(p=>!t.includes(p));add(!miss.length,miss.length?'Falta algo que protege tus datos: '+miss.join(', '):'Claves de tus datos intactas');
+    add(!/id=\"set-token\"[^>]*value=\"\'+esc\(s\.token\)/.test(t),'El TOKEN no se vuelca en Ajustes');
+    const r0=rev(pub),r1=rev(t);if(r1<r0)add(false,'APP_REVISION ha bajado');
+    const js=appScript(t),names=[...js.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)].map(m=>m[1]);
+    const dup=[...new Set(names.filter((n,i)=>names.indexOf(n)!==i))];add(!dup.length,dup.length?'Funciones repetidas: '+dup.join(', '):'Ninguna función repetida');
+    const reas=[...new Set(names)].filter(n=>new RegExp('(?<![\\w$.])(?:window\\.)?'+n.replace(/\$/g,'\\$')+'\\s*=\\s*(?:async\\s+)?(?:function\\b|\\([^)]*\\)\\s*=>)').test(js));add(!reas.length,reas.length?'Funciones reasignadas (parches): '+reas.join(', ')+'. Cámbialas en su sitio.':'Ninguna función reasignada');
+    const scripts=(t.match(/<script(?![^>]*id="app")[^>]*>[\s\S]*?<\/script>/g)||[]).filter(x=>x.length>400).length;add(!scripts,scripts?'Hay un <script> nuevo fuera del principal':'Un solo script de la app');
+    try{new Function(js);add(true,'Código sin errores de escritura');}catch(e){add(false,'Error de escritura: '+e.message);extra='Revisa paréntesis, llaves, comillas y backticks del bloque que añadiste.';}
+    if(fail)throw Error('stop');
+    const r=await sandbox(t);log.push(JSON.stringify(r,null,1));
+    add(r.ready==='true','La app arranca');add(!r.errors.length,r.errors.length?'Errores al usarla: '+r.errors.slice(0,3).join(' | '):'Todas las pantallas se pintan sin errores');
+    result=t;reviewText='REVISAR v'+v1+'\nCambios aplicados:\n'+blocks.map(b=>'--- bloque '+b.n+' ---\nANTES:\n'+b.find+'\nDESPUÉS:\n'+b.repl).join('\n').slice(0,90000);
+  }catch(e){if(e.message!=='stop')add(false,e.message);}
+  $('res').hidden=false;$('checks').innerHTML=checks.map(([ok,t])=>'<li class="'+(ok===true?'ok':ok===false?'bad':'warn')+'">'+(ok===true?'✓':ok===false?'✗':'•')+' '+t.replace(/</g,'&lt;')+'</li>').join('');
+  $('verdict').innerHTML=fail?'<span class="bad">✗ No subir: hay que corregir</span>':'<span class="ok">✓ Todo correcto</span>';
+  $('okbox').hidden=fail;$('badbox').hidden=!fail;$('log').textContent=log.join('\n');
+  errText='CORREGIR. La herramienta ha rechazado tus cambios:\n'+checks.filter(c=>c[0]===false).map(c=>'- '+c[1]).join('\n')+(extra?'\n'+extra:'')+'\n\nEntrega SOLO los bloques que cambian, con su MISMO número, en un único bloque de código que empiece por «@@@ SOLO CORREGIDOS». Copia el texto de BUSCAR literalmente del archivo.';
+  btn.disabled=false;btn.textContent='Aplicar y comprobar';$('res').scrollIntoView({behavior:'smooth'});
+};
+const copy=t=>navigator.clipboard.writeText(t).then(()=>alert('Copiado. Pégalo en el mismo chat de la IA.')).catch(()=>{$('log').textContent=t;$('log').parentElement.open=true;});
+$('copy-err').onclick=()=>copy(errText);$('copy-review').onclick=()=>copy(reviewText);
+$('dl-new').onclick=()=>download('index.html',result,'text/html');$('dl-old').onclick=()=>download('index_anterior_v'+ver(pub)+'.html',pub,'text/html');
+$('chain').onclick=()=>{current=result;parts++;prev=[];$('patch').value='';$('res').hidden=true;$('cur').innerHTML='Versión publicada: <b>v'+ver(pub)+'</b> · vas por la <b>parte '+parts+'</b>. Pega la siguiente parte.';};
+</script></body></html>
