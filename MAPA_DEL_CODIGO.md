@@ -1,243 +1,243 @@
-# MAPA DEL CÓDIGO · Finanzas v8
+# MAPA DEL CÓDIGO · Finanzas v9
 
 Generado automáticamente. Busca por función; las líneas cambian.
 
 
-## Utilidades · línea 547
-- `localDate(d)` · línea 556
-- `addDays(s,n)` · línea 557
-- `monthAdd(m,n)` · línea 559
-- `fmtDate(s,o={day:'numeric',month:'short'})` · línea 563
-- `nf(n,d=2,min=d)` · línea 564
-- `money(eur,opts={})` · línea 566
-- `toNum(v)` · línea 577
-- `toDate(v,dmy=true)` · línea 588
+## Utilidades · línea 579
+- `localDate(d)` · línea 588
+- `addDays(s,n)` · línea 589
+- `monthAdd(m,n)` · línea 591
+- `fmtDate(s,o={day:'numeric',month:'short'})` · línea 595
+- `nf(n,d=2,min=d)` · línea 596
+- `money(eur,opts={})` · línea 598
+- `toNum(v)` · línea 609
+- `toDate(v,dmy=true)` · línea 620
 
-## Estado y guardado · línea 637
-- `defaults()` · línea 643
-- `load()` · línea 662
-- `migrate(o)` · línea 667
-- `autoBackup()` · línea 677
-- `backupInfo()` · línea 685
-- `restoreAutomaticBackup()` · línea 686
-- `save(sync=true)` · línea 687
-- `stampChanges(before)` · línea 694
-- `change(fn,msg)` · línea 711
-- `undo()` · línea 718
-- `toast(text,canUndo=false)` · línea 728
+## Estado y guardado · línea 669
+- `defaults()` · línea 675
+- `load()` · línea 694
+- `migrate(o)` · línea 699
+- `autoBackup()` · línea 709
+- `backupInfo()` · línea 717
+- `restoreAutomaticBackup()` · línea 718
+- `save(sync=true)` · línea 719
+- `stampChanges(before)` · línea 726
+- `change(fn,msg)` · línea 743
+- `undo()` · línea 750
+- `toast(text,canUndo=false)` · línea 760
 
-## Categorías · línea 735
-- `merchantOf(desc)` · línea 770
-- `categorize(t)` · línea 778
+## Categorías · línea 767
+- `merchantOf(desc)` · línea 802
+- `categorize(t)` · línea 810
 
-## Importar archivos (Excel .xlsx y CSV) · línea 788
-- `unzip(buf)` · línea 790
-- `readXlsx(buf)` · línea 805
-- `parseCSV(text)` · línea 812
-- `findHeader(rows,needles)` · línea 826
-- `detect(rows)` · línea 839
-- `col(hs,...names)` · línea 843
-- `parseBank(rows,fmt,head)` · línea 845
-- `normAsset(a)` · línea 860
-- `binanceKind(op,acct)` · línea 865
-- `krakenKind(type,sub)` · línea 877
-- `parseLedger(rows,fmt,head,map)` · línea 886
-- `parseOFX(text)` · línea 917
-- `parseQIF(text)` · línea 925
-- `readFile(file)` · línea 931
-- `importFiles(files)` · línea 940
-- `openImport(rows,det,fname,map)` · línea 952
-- `openMapper(rows,fname)` · línea 988
-- `openPositionsImport(rows,head,fname,map)` · línea 1013
-- `importBackup(o)` · línea 1021
+## Importar archivos (Excel .xlsx y CSV) · línea 820
+- `unzip(buf)` · línea 822
+- `readXlsx(buf)` · línea 837
+- `parseCSV(text)` · línea 844
+- `findHeader(rows,needles)` · línea 858
+- `detect(rows)` · línea 871
+- `col(hs,...names)` · línea 875
+- `parseBank(rows,fmt,head)` · línea 877
+- `normAsset(a)` · línea 892
+- `binanceKind(op,acct)` · línea 897
+- `krakenKind(type,sub)` · línea 909
+- `parseLedger(rows,fmt,head,map)` · línea 918
+- `parseOFX(text)` · línea 949
+- `parseQIF(text)` · línea 957
+- `readFile(file)` · línea 963
+- `importFiles(files)` · línea 972
+- `openImport(rows,det,fname,map)` · línea 984
+- `openMapper(rows,fname)` · línea 1020
+- `openPositionsImport(rows,head,fname,map)` · línea 1045
+- `importBackup(o)` · línea 1053
 
-## Activos y precios · línea 1027
-- `ensureAsset(sym)` · línea 1032
-- `priceEUR(sym)` · línea 1035
-- `fx(cur)` · línea 1041
-- `trackedAssets()` · línea 1043
-- `refreshPrices(force=false)` · línea 1050
-- `directPrices(cryptos)` · línea 1065
-- `priceAt(sym,t)` · línea 1073
+## Activos y precios · línea 1059
+- `ensureAsset(sym)` · línea 1064
+- `priceEUR(sym)` · línea 1067
+- `fx(cur)` · línea 1073
+- `trackedAssets()` · línea 1075
+- `refreshPrices(force=false)` · línea 1082
+- `directPrices(cryptos)` · línea 1097
+- `priceAt(sym,t)` · línea 1105
 
-## Cartera: qué tienes y cuánto vale · línea 1090
-- `bankBalance(a)` · línea 1091
-- `positionRows()` · línea 1100
-- `derivRows()` · línea 1112
-- `netWorth()` · línea 1121
-- `investmentSummary()` · línea 1129
-- `snapshot()` · línea 1137
-- `bankHistory(days=365)` · línea 1144
-- `reliableHistory(points)` · línea 1155
-- `netSeries(days)` · línea 1167
-- `changeWindow(days)` · línea 1179
+## Cartera: qué tienes y cuánto vale · línea 1122
+- `bankBalance(a)` · línea 1123
+- `positionRows()` · línea 1132
+- `derivRows()` · línea 1144
+- `netWorth()` · línea 1153
+- `investmentSummary()` · línea 1161
+- `snapshot()` · línea 1169
+- `bankHistory(days=365)` · línea 1176
+- `reliableHistory(points)` · línea 1187
+- `netSeries(days)` · línea 1199
+- `changeWindow(days)` · línea 1211
 
-## Movimientos: resúmenes del mes · línea 1187
-- `monthTotals(m)` · línea 1188
-- `lastMonths(n)` · línea 1195
-- `recurring()` · línea 1197
+## Movimientos: resúmenes del mes · línea 1219
+- `monthTotals(m)` · línea 1220
+- `lastMonths(n)` · línea 1227
+- `recurring()` · línea 1229
 
-## Análisis: de un vistazo · línea 1209
-- `liquidity()` · línea 1211
-- `avgMonthlyExpense()` · línea 1213
-- `cushion()` · línea 1215
-- `pace()` · línea 1217
-- `upcoming(days=31)` · línea 1223
-- `forecast()` · línea 1233
-- `topMerchants(m,n=5)` · línea 1245
-- `dailySpend(m)` · línea 1246
-- `insights()` · línea 1248
+## Análisis: de un vistazo · línea 1241
+- `liquidity()` · línea 1243
+- `avgMonthlyExpense()` · línea 1245
+- `cushion()` · línea 1247
+- `pace()` · línea 1249
+- `upcoming(days=31)` · línea 1255
+- `forecast()` · línea 1265
+- `topMerchants(m,n=5)` · línea 1277
+- `dailySpend(m)` · línea 1278
+- `insights()` · línea 1280
 
-## Fiscalidad (España): FIFO, base del ahorro, borrador · línea 1261
-- `cuotaAhorro(base)` · línea 1264
-- `matchTransfers(L)` · línea 1266
-- `taxGroups()` · línea 1272
-- `taxPrefetch(onStep)` · línea 1278
-- `taxCompute()` · línea 1287
-- `balancesAt(date)` · línea 1328
-- `modelo721(year)` · línea 1329
-- `taxSummary(year,extra=0)` · línea 1335
-- `byCoin(disp)` · línea 1340
+## Fiscalidad (España): FIFO, base del ahorro, borrador · línea 1293
+- `cuotaAhorro(base)` · línea 1296
+- `matchTransfers(L)` · línea 1298
+- `taxGroups()` · línea 1304
+- `taxPrefetch(onStep)` · línea 1310
+- `taxCompute()` · línea 1319
+- `balancesAt(date)` · línea 1360
+- `modelo721(year)` · línea 1361
+- `taxSummary(year,extra=0)` · línea 1367
+- `byCoin(disp)` · línea 1372
 
-## Conexión con el Worker (exchanges, precios, sincronización) · línea 1342
-- `api(path,opts={})` · línea 1344
-- `syncBalances(manual=false)` · línea 1363
+## Conexión con el Worker (exchanges, precios, sincronización) · línea 1374
+- `api(path,opts={})` · línea 1376
+- `syncBalances(manual=false)` · línea 1395
 
-## Sincronización cifrada entre dispositivos · línea 1384
-- `b64u(b)` · línea 1387
-- `syncKey()` · línea 1389
-- `syncId()` · línea 1390
-- `syncPayload()` · línea 1392
-- `encrypt(obj)` · línea 1393
-- `decrypt(s)` · línea 1399
-- `mergeStates(local,remote)` · línea 1405
-- `scheduleSync(ms=1500)` · línea 1432
-- `syncNow(manual=false)` · línea 1433
-- `ago(t)` · línea 1469
-- `paintSync()` · línea 1470
-- `pairLink()` · línea 1479
-- `readPair()` · línea 1480
+## Sincronización cifrada entre dispositivos · línea 1416
+- `b64u(b)` · línea 1419
+- `syncKey()` · línea 1421
+- `syncId()` · línea 1422
+- `syncPayload()` · línea 1424
+- `encrypt(obj)` · línea 1425
+- `decrypt(s)` · línea 1431
+- `mergeStates(local,remote)` · línea 1437
+- `scheduleSync(ms=1500)` · línea 1464
+- `syncNow(manual=false)` · línea 1465
+- `ago(t)` · línea 1501
+- `paintSync()` · línea 1502
+- `pairLink()` · línea 1511
+- `readPair()` · línea 1512
 
-## Avisos · línea 1489
-- `alerts()` · línea 1490
+## Avisos · línea 1521
+- `alerts()` · línea 1522
 
-## Gráficos interactivos (SVG propios, sin librerías) · línea 1507
-- `svgLine(pts,{h,w,id='nw',col}={})` · línea 1512
-- `svgCompare(m)` · línea 1527
-- `svgDays(m)` · línea 1541
-- `svgMonths(months)` · línea 1550
-- `donut(entries,{id='cats',label='Gastado',total}={})` · línea 1557
-- `allocBar(parts,total)` · línea 1563
-- `bindCharts(root=document)` · línea 1567
+## Gráficos interactivos (SVG propios, sin librerías) · línea 1539
+- `svgLine(pts,{h,w,id='nw',col}={})` · línea 1544
+- `svgCompare(m)` · línea 1559
+- `svgDays(m)` · línea 1573
+- `svgMonths(months)` · línea 1582
+- `donut(entries,{id='cats',label='Gastado',total}={})` · línea 1589
+- `allocBar(parts,total)` · línea 1595
+- `bindCharts(root=document)` · línea 1599
 
-## Instalación PWA, radar y Copiloto · línea 1600
-- `installState()` · línea 1605
-- `installApp()` · línea 1606
-- `repairPWA()` · línea 1611
-- `aiPayload(kind)` · línea 1616
-- `localAdvice(kind)` · línea 1622
-- `portfolioMetricsFromPayload(rows)` · línea 1650
-- `runAI(kind)` · línea 1651
-- `vCopilot()` · línea 1662
-- `calcTechnical(closes)` · línea 1670
-- `loadAssetIntel(sym)` · línea 1675
-- `loadRadar()` · línea 1681
-- `assetIntelHTML(sym)` · línea 1682
+## Instalación PWA, radar y Copiloto · línea 1632
+- `installState()` · línea 1637
+- `installApp()` · línea 1638
+- `repairPWA()` · línea 1643
+- `aiPayload(kind)` · línea 1648
+- `localAdvice(kind)` · línea 1654
+- `portfolioMetricsFromPayload(rows)` · línea 1682
+- `runAI(kind)` · línea 1683
+- `vCopilot()` · línea 1694
+- `calcTechnical(closes)` · línea 1702
+- `loadAssetIntel(sym)` · línea 1707
+- `loadRadar()` · línea 1713
+- `assetIntelHTML(sym)` · línea 1714
 
-## Navegación · línea 1684
-- `go(v,f)` · línea 1691
-- `navBtn(id,n,i,cls='nav')` · línea 1697
-- `navBtns(cls)` · línea 1698
-- `sideNav()` · línea 1699
-- `drawerNav()` · línea 1700
-- `renderNav()` · línea 1701
-- `render()` · línea 1710
-- `head(title,sub,actions='')` · línea 1720
-- `catInitials(c)` · línea 1722
-- `initials(s)` · línea 1724
-- `assetColor(sym)` · línea 1726
-- `moneyBig(eur)` · línea 1728
-- `rangeBtns()` · línea 1733
-- `deltaPill(chg,base,txt)` · línea 1735
+## Navegación · línea 1716
+- `go(v,f)` · línea 1723
+- `navBtn(id,n,i,cls='nav')` · línea 1729
+- `navBtns(cls)` · línea 1730
+- `sideNav()` · línea 1731
+- `drawerNav()` · línea 1732
+- `renderNav()` · línea 1733
+- `render()` · línea 1742
+- `head(title,sub,actions='')` · línea 1752
+- `catInitials(c)` · línea 1754
+- `initials(s)` · línea 1756
+- `assetColor(sym)` · línea 1758
+- `moneyBig(eur)` · línea 1760
+- `rangeBtns()` · línea 1765
+- `deltaPill(chg,base,txt)` · línea 1767
 
-## Inicio · línea 1738
-- `accountLine(a,rows)` · línea 1739
-- `homeAssets(rows)` · línea 1743
-- `changeCell(days,label)` · línea 1747
-- `compactEmpty(title,text,action)` · línea 1750
-- `vResumenMobile()` · línea 1751
-- `greeting()` · línea 1765
-- `safeToSpend()` · línea 1767
-- `accValue(a,rows)` · línea 1768
-- `accCard(a,rows)` · línea 1769
-- `vResumen()` · línea 1774
-- `catRow(k,v,max,total,attrs)` · línea 1792
-- `onboarding()` · línea 1796
-- `txItem(t)` · línea 1804
-- `goalRow(g)` · línea 1808
-- `goalSaved(g)` · línea 1813
+## Inicio · línea 1770
+- `accountLine(a,rows)` · línea 1771
+- `homeAssets(rows)` · línea 1775
+- `changeCell(days,label)` · línea 1779
+- `compactEmpty(title,text,action)` · línea 1782
+- `vResumenMobile()` · línea 1783
+- `greeting()` · línea 1797
+- `safeToSpend()` · línea 1799
+- `accValue(a,rows)` · línea 1800
+- `accCard(a,rows)` · línea 1801
+- `vResumen()` · línea 1806
+- `catRow(k,v,max,total,attrs)` · línea 1825
+- `onboarding()` · línea 1829
+- `txItem(t)` · línea 1837
+- `goalRow(g)` · línea 1841
+- `goalSaved(g)` · línea 1846
 
-## Movimientos (pestaña «Gastos») · línea 1815
-- `filtered()` · línea 1816
-- `vMovs()` · línea 1821
-- `editTx(id)` · línea 1849
-- `quickAdd()` · línea 1860
+## Movimientos (pestaña «Gastos») · línea 1848
+- `filtered()` · línea 1849
+- `vMovs()` · línea 1854
+- `editTx(id)` · línea 1882
+- `quickAdd()` · línea 1893
 
-## Objetivos y presupuestos · línea 1875
-- `vGoals()` · línea 1876
-- `editGoal(id)` · línea 1884
+## Objetivos y presupuestos · línea 1908
+- `vGoals()` · línea 1909
+- `editGoal(id)` · línea 1917
 
-## Inversiones · línea 1894
-- `costBasis()` · línea 1895
-- `invSeries(days)` · línea 1897
-- `portfolioMetrics(list,total)` · línea 1901
-- `portfolioScore(pm,coverage)` · línea 1904
-- `decisionPanel(pm,coverage,list)` · línea 1909
-- `scenarioPanel(total)` · línea 1919
-- `exposurePanel(dn,pm)` · línea 1923
-- `marketTabs()` · línea 1924
-- `positionsPanel(list,ops,ders)` · línea 1925
-- `vInv()` · línea 1926
-- `holdingRow(x)` · línea 1939
-- `riskStrip(pm,list,total)` · línea 1940
-- `radarHTML(trends)` · línea 1941
-- `invDonut(list,total)` · línea 1945
-- `accTable(rows)` · línea 1946
-- `opsTable(ops)` · línea 1951
-- `tvSymbol(sym)` · línea 1956
-- `tradingViewURL(sym)` · línea 1963
-- `assetDetail(sym)` · línea 1964
-- `editOp(id)` · línea 1976
-- `editDeriv(id)` · línea 1988
+## Inversiones · línea 1927
+- `costBasis()` · línea 1928
+- `invSeries(days)` · línea 1930
+- `portfolioMetrics(list,total)` · línea 1934
+- `portfolioScore(pm,coverage)` · línea 1937
+- `decisionPanel(pm,coverage,list)` · línea 1942
+- `scenarioPanel(total)` · línea 1952
+- `exposurePanel(dn,pm)` · línea 1956
+- `marketTabs()` · línea 1957
+- `positionsPanel(list,ops,ders)` · línea 1958
+- `vInv()` · línea 1959
+- `holdingRow(x)` · línea 1972
+- `riskStrip(pm,list,total)` · línea 1973
+- `radarHTML(trends)` · línea 1974
+- `invDonut(list,total)` · línea 1978
+- `accTable(rows)` · línea 1979
+- `opsTable(ops)` · línea 1984
+- `tvSymbol(sym)` · línea 1989
+- `tradingViewURL(sym)` · línea 1996
+- `assetDetail(sym)` · línea 1997
+- `editOp(id)` · línea 2009
+- `editDeriv(id)` · línea 2021
 
-## Impuestos · línea 2001
-- `vTax()` · línea 2003
-- `taxCSV(year)` · línea 2027
-- `taxAIText(year)` · línea 2036
+## Impuestos · línea 2034
+- `vTax()` · línea 2036
+- `taxCSV(year)` · línea 2060
+- `taxAIText(year)` · línea 2069
 
-## Cuentas · línea 2047
-- `vCuentas()` · línea 2050
-- `editAcc(id)` · línea 2060
+## Cuentas · línea 2080
+- `vCuentas()` · línea 2083
+- `editAcc(id)` · línea 2093
 
-## Ajustes · línea 2071
-- `vAjustes()` · línea 2073
-- `workerInfoHTML(i)` · línea 2092
-- `vMas()` · línea 2097
+## Ajustes · línea 2104
+- `vAjustes()` · línea 2106
+- `workerInfoHTML(i)` · línea 2125
+- `vMas()` · línea 2130
 
-## Ventana, descargas y acciones · línea 2111
-- `modal(title,html)` · línea 2112
-- `download(name,text,type='application/json')` · línea 2113
-- `copyText(t,msg='Copiado')` · línea 2114
-- `resetDrawerGesture()` · línea 2118
-- `openDrawer()` · línea 2119
-- `closeDrawer()` · línea 2120
-- `gestureStart(e)` · línea 2122
-- `gestureMove(e)` · línea 2130
-- `gestureEnd(e)` · línea 2141
-- `act(a,el)` · línea 2148
-- `confirmTwice(el)` · línea 2241
-- `afterRender()` · línea 2280
+## Ventana, descargas y acciones · línea 2144
+- `modal(title,html)` · línea 2145
+- `download(name,text,type='application/json')` · línea 2146
+- `copyText(t,msg='Copiado')` · línea 2147
+- `resetDrawerGesture()` · línea 2151
+- `openDrawer()` · línea 2152
+- `closeDrawer()` · línea 2153
+- `gestureStart(e)` · línea 2155
+- `gestureMove(e)` · línea 2163
+- `gestureEnd(e)` · línea 2174
+- `act(a,el)` · línea 2181
+- `confirmTwice(el)` · línea 2274
+- `afterRender()` · línea 2313
 
-## Arranque · línea 2298
-- `refreshAll(force)` · línea 2300
-- `init()` · línea 2306
+## Arranque · línea 2331
+- `refreshAll(force)` · línea 2333
+- `init()` · línea 2339
