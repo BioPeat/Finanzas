@@ -472,9 +472,31 @@ async function act(a, el) {
     }
     case 'sync-on': state.settings.sync = randKey(32); state.settings.lastSync = 0; state.settings.lastRemote = 0; state.settings.lastPush = 0; state.settings.pushed = -1; save(false); await syncNow(true); render(); break;
     case 'sync-off': state.settings.sync = ''; save(false); render(); break;
-    case 'sync-now': if (!syncOn()) { go('ajustes'); toast('Activa la sincronización en Ajustes.'); break; } await syncNow(true); if (state.settings.worker) syncBalances(); break;
-    case 'pair-copy': copyText(pairLink(), 'Enlace copiado. Ábrelo en el móvil.'); break;
-    case 'pair-share': navigator.share({ title: 'Finanzas', text: 'Vincular Finanzas', url: pairLink() }).catch(() => { }); break;
+    case 'sync-now': {
+      if ($('set-worker')?.value.trim()) state.settings.worker = $('set-worker').value.trim().replace(/\/+$/, '');
+      if ($('set-token')?.value.trim()) state.settings.token = $('set-token').value.trim();
+      save(false);
+      if (!syncOn()) { go('ajustes'); toast('Activa la sincronización en Ajustes.'); break; }
+      await syncNow(true); if (state.settings.worker) syncBalances(); break;
+    }
+    case 'pair-copy': {
+      if ($('set-worker')?.value.trim()) state.settings.worker = $('set-worker').value.trim().replace(/\/+$/, '');
+      if ($('set-token')?.value.trim()) state.settings.token = $('set-token').value.trim();
+      if (!state.settings.sync) state.settings.sync = randKey(32);
+      state.settings.pushed = -1; save(false);
+      copyText(pairLink(), 'Enlace copiado. Subiendo copia cifrada para el móvil…');
+      syncNow(true);
+      break;
+    }
+    case 'pair-share': {
+      if ($('set-worker')?.value.trim()) state.settings.worker = $('set-worker').value.trim().replace(/\/+$/, '');
+      if ($('set-token')?.value.trim()) state.settings.token = $('set-token').value.trim();
+      if (!state.settings.sync) state.settings.sync = randKey(32);
+      state.settings.pushed = -1; save(false);
+      navigator.share({ title: 'Finanzas', text: 'Vincular Finanzas', url: pairLink() }).catch(() => { });
+      syncNow(true);
+      break;
+    }
     case 'tax-prices': { taxBusy = true; render(); try { const n = await taxPrefetch((i, t) => { const b = document.querySelector('[data-act="tax-prices"]'); if (b) b.textContent = 'Precios ' + i + ' de ' + t + '…'; }); toast(n ? 'Precios históricos descargados: ' + n : 'Ya estaban todos los precios'); } catch (e) { toast(e.message); } taxBusy = false; render(); break; }
     case 'tax-csv': taxCSV(String(state.settings.taxYear || val('tax-year'))); break;
     case 'tax-ai': copyText(taxAIText(val('tax-year')), 'Copiado: pégalo en el Copiloto IA o en tu gestor.'); break;
@@ -575,8 +597,17 @@ function refreshAll(force) {
 }
 
 function init() {
-  readPair();
-  try { if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => { }); } catch (e) { }
+  const paired = readPair();
+  addEventListener('hashchange', () => {
+    if (location.hash.startsWith('#pair=')) { readPair(); return; }
+    const ch = location.hash.slice(1);
+    if (VIEWS.some(v => v[0] === ch) && view !== ch) go(ch);
+  });
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => { });
+    }
+  } catch (e) { }
   const h = location.hash.slice(1); if (VIEWS.some(v => v[0] === h) || h === 'mas') view = h;
   if (h === 'quick') view = 'resumen';
   filt.m = state.tx.map(t => monthKey(t.date)).sort().at(-1) || '';
@@ -585,7 +616,7 @@ function init() {
   handleBankCallback();
   if (state.accounts.length) refreshPrices();
   startLiveStream();
-  if (state.settings.worker) { syncNow(); syncBalances(); api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { }); }
+  if (state.settings.worker) { if (!paired) syncNow(); syncBalances(); api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { }); }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAll(); else stopLiveStream(); });
   addEventListener('online', () => refreshAll());
   addEventListener('focus', () => { if (syncOn()) syncNow(); });

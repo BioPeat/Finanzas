@@ -1,6 +1,6 @@
 // ===== Estado, almacenamiento local, sincronización cifrada y utilidades =====
 "use strict";
-const APP_VERSION = 'v12', APP_REVISION = 13, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
+const APP_VERSION = 'v12', APP_REVISION = 14, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
 
 const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -272,6 +272,9 @@ async function syncNow(manual = false) {
       const remote = migrate(await decrypt(r.data));
       state = migrate(mergeStates(state, remote)); Object.assign(state.settings, keep);
       state.settings.lastRemote = r.updated; changed = true;
+      if (typeof filt === 'object' && filt && (!filt.m || !state.tx.some(t => monthKey(t.date) === filt.m)) && state.tx.length) {
+        filt.m = state.tx.map(t => monthKey(t.date)).sort().at(-1) || '';
+      }
     }
     if (!r || (state.dirty || 0) !== (state.settings.pushed || 0)) {
       const pushing = state.dirty || 0;
@@ -282,7 +285,7 @@ async function syncNow(manual = false) {
     }
     state.settings.lastSync = Date.now(); state.settings.syncRetries = 0; state.syncError = '';
     localStorage.setItem(STORE, JSON.stringify(state));
-    syncState = 'ok'; if (changed && ready && !$('modal').open) render(); if (manual) toast(changed ? 'Sincronizado: hay datos nuevos del otro dispositivo' : 'Sincronizado');
+    syncState = 'ok'; if (changed && ready) render(); if (manual) toast(changed ? 'Sincronizado: hay datos nuevos del otro dispositivo' : 'Sincronizado');
   } catch (e) {
     const rawMsg = String(e.message || e);
     const niceMsg = /AES key|OperationError|atob|invalid character/i.test(rawMsg)
@@ -311,14 +314,21 @@ function paintSync() {
 }
 function pairLink() { return location.origin + location.pathname + '#pair=' + b64u(new TextEncoder().encode(JSON.stringify({ w: state.settings.worker, t: state.settings.token, s: state.settings.sync }))); }
 function readPair() {
-  const m = location.hash.match(/#pair=([\w-]+)/); if (!m) return;
+  const m = location.hash.match(/#pair=([\w-]+)/); if (!m) return false;
   history.replaceState(null, '', location.pathname + location.search);
   try {
     const o = JSON.parse(new TextDecoder().decode(ub64(m[1]))); if (!o.s || !o.w) throw 0;
-    Object.assign(state.settings, { worker: o.w, token: o.t || '', sync: o.s, lastSync: 0, lastRemote: 0, lastPush: 0, pushed: state.dirty || 0 });
+    Object.assign(state.settings, { worker: o.w, token: o.t || '', sync: o.s, lastSync: 0, lastRemote: 0, lastPush: 0, pushed: -1, syncRetries: 0 });
+    state.syncError = '';
     localStorage.setItem(STORE, JSON.stringify(state));
-    setTimeout(async () => { await syncNow(); toast('Dispositivo vinculado: tus datos ya están aquí'); syncBalances(); }, 50);
-  } catch (e) { toast('El enlace de vinculación no es válido.'); }
+    setTimeout(async () => {
+      await syncNow(true);
+      if (ready) render();
+      if (syncState === 'ok') toast('Dispositivo vinculado: tus datos ya están aquí');
+      syncBalances();
+    }, 50);
+    return true;
+  } catch (e) { setTimeout(() => toast('El enlace de vinculación no es válido.'), 50); return false; }
 }
 
 const accById = id => state.accounts.find(a => a.id === id);

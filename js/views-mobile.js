@@ -4,47 +4,68 @@
 function vResumenMobile() {
   if (!state.accounts.length) {
     return '<div class="mobile-home v12-mobile">'
-      + '<section class="mobile-hero"><div class="position-eyebrow">Finanzas personales</div><div class="position-value" style="font-size:32px;margin-top:8px">Todo tu dinero en directo</div><p class="muted" style="margin:8px 0 0">Conecta Santander, KuCoin, Kraken o importa tu primer archivo en segundos.</p>'
-      + '<div class="row" style="justify-content:center;margin-top:16px">' + btn(ico('upload') + 'Importar archivo', 'data-act="import"', 'primary') + btn(ico('link') + 'Conectar cuentas', 'data-act="connect-hub"') + '</div></section>'
+      + '<section class="mobile-hero"><div class="position-eyebrow">Finanzas personales</div><div class="position-value" style="font-size:32px;margin-top:8px">Todo tu dinero en directo</div><p class="muted" style="margin:8px 0 0">Conecta Santander, OKX, KuCoin, Kraken o importa tu primer archivo en segundos.</p>'
+      + '<div class="row" style="margin-top:16px">' + btn(ico('upload') + 'Importar archivo', 'data-act="import"', 'primary') + btn(ico('link') + 'Conectar cuentas', 'data-act="connect-hub"') + '</div></section>'
       + onboarding() + '</div>';
   }
   const nw = netWorth(), inv = investmentSummary(), ds = derivSummary(), ser = netSeries(rangeDays()), pts = ser.pts;
   const cw = range === 'Máx' ? null : changeWindow(rangeDays());
   const chg = cw ? cw.value : (pts.length > 1 ? pts.at(-1)[1] - pts[0][1] : null);
   const isB = a => a.kind === 'bank' || a.kind === 'cash';
-  const accs = state.accounts.slice().sort((a, b) => (isB(b) - isB(a)) || (accValue(b, nw.rows) - accValue(a, nw.rows))), assets = homeAssets(nw.rows), cash = sum(nw.rows.filter(r => r.bank).map(r => r.eur)), derivEq = nw.parts.deriv || 0, invAll = inv.value + derivEq;
+  const accs = state.accounts.slice().sort((a, b) => (isB(b) - isB(a)) || (accValue(b, nw.rows) - accValue(a, nw.rows))), assets = homeAssets(nw.rows), ders = derivRows(), cash = sum(nw.rows.filter(r => r.bank).map(r => r.eur)), derivEq = nw.parts.deriv || 0;
   const m = monthKey(today()), mt = monthTotals(m), s = safeToSpend(), up = upcoming(31).slice(0, 3), al = alerts().slice(0, 3);
   const last = state.tx.slice().sort((a, b) => b.date.localeCompare(a.date) || (a.ord ?? 0) - (b.ord ?? 0)).slice(0, 4);
+  const cats = Object.entries(mt.byCat).sort((a, b) => b[1] - a[1]), maxCat = cats[0]?.[1] || 1;
+  const monthWord = monthLong(m).split(' ')[0], monthCap = monthWord.replace(/^./, c => c.toUpperCase());
+  const hasSpot = assets.length > 0 || Math.abs(inv.value) >= 1;
+  const hasDerivs = ders.length > 0 || Math.abs(derivEq) >= 1;
+  const hasInv = hasSpot || hasDerivs;
+  const derivVal = ds.equityEUR || derivEq || ds.totalMarginEUR;
+  const totRef = Math.max(1, Math.abs(cash) + (hasSpot ? Math.abs(inv.value) : 0) + (hasDerivs ? Math.abs(derivVal) : 0));
+  const cashPct = Math.max(0, Math.min(100, cash / totRef * 100));
+  const spotPct = hasSpot ? Math.max(2, Math.min(100, Math.abs(inv.value) / totRef * 100)) : 0;
+  const derivPct = hasDerivs ? Math.max(2, Math.min(100, Math.abs(derivVal) / totRef * 100)) : 0;
+  const cush = cushion(), avgExp = avgMonthlyExpense();
+  const thirdFlowCell = (!hasInv && Math.round(s.f.end) === Math.round(cash))
+    ? '<div class="change-cell"><small>Media mensual</small><b>' + money(avgExp, { d: 0 }) + '</b><span>gasto habitual</span></div>'
+    : '<div class="change-cell"><small>Fin de mes</small><b>' + money(s.f.end, { d: 0 }) + '</b><span>liquidez est.</span></div>';
 
   return '<div class="mobile-home v12-mobile v7-mobile">'
     + '<section class="mobile-hero">'
-    + '<div class="position-eyebrow"><span>Patrimonio neto · ' + fmtDate(today(), { day: 'numeric', month: 'short' }) + '</span></div>'
+    + '<div class="m-hero-top"><div class="position-eyebrow"><span>Patrimonio neto · ' + fmtDate(today(), { day: 'numeric', month: 'short' }) + '</span></div>'
+    + (chg == null ? '<span class="pill">Base inicial</span>' : '<span class="pill ' + cls(chg) + '">' + money(chg, { sign: true, d: 0 }) + ' · ' + RANGE_TXT[range] + '</span>') + '</div>'
     + '<div class="position-value" data-live-nw>' + moneyBig(nw.total) + '</div>'
-    + '<div class="position-status">' + (chg == null ? '<span>Base inicial</span>' : '<span class="pill ' + cls(chg) + '">' + money(chg, { sign: true, d: 0 }) + ' · ' + RANGE_TXT[range] + '</span>') + '</div>'
-    + '<div class="position-chart m-hero-chart">' + svgLine(pts, { id: 'nw', h: 108, axis: false }) + '</div>'
+    + (hasInv
+      ? '<div class="alloc-track" style="margin-top:10px"><i style="width:' + cashPct.toFixed(1) + '%;background:var(--brand)"></i>' + (hasSpot ? '<i style="width:' + spotPct.toFixed(1) + '%;background:var(--inv)"></i>' : '') + (hasDerivs ? '<i style="width:' + derivPct.toFixed(1) + '%;background:var(--ai)"></i>' : '') + '</div>'
+      : '<div style="margin-top:8px"><button type="button" class="alloc-cta" data-act="connect-hub" data-tab="okx">' + ico('plus') + '<span>Conectar inversión / exchange</span></button></div>')
+    + '<div class="position-chart m-hero-chart">' + svgLine(pts, { id: 'nw', h: 112, axis: false }) + '</div>'
     + rangeBtns()
     + '<div class="m-quick-actions">'
     + '<button type="button" class="m-qbtn primary" data-act="quick"><span>' + ico('plus') + '</span><small>Apuntar</small></button>'
     + '<button type="button" class="m-qbtn" data-act="import"><span>' + ico('upload') + '</span><small>Importar</small></button>'
-    + '<button type="button" class="m-qbtn" data-act="' + (state.settings.worker ? 'refresh' : 'prices') + '"><span>' + ico('sync') + '</span><small>Actualizar</small></button>'
+    + '<button type="button" class="m-qbtn" data-act="connect-hub"><span>' + ico('link') + '</span><small>Conectar</small></button>'
     + '<button type="button" class="m-qbtn ai" data-go="copiloto"><span>' + ico('brain') + '</span><small>Copiloto</small></button>'
     + '</div></section>'
     + changeGridHTML('section', 'aria-label="Cambios reales"')
-    + ((assets.length || ds.count || Math.abs(invAll) >= 1)
+    + (hasInv
       ? '<section class="panel m-flat-panel">'
         + '<button type="button" class="m-flat-row" data-go="cuentas"><span><b>En bancos (líquido)</b><small>' + nf(nw.total ? cash / nw.total * 100 : 0, 1) + '\u00A0% del patrimonio</small></span><strong>' + money(cash, { d: 0 }) + '</strong></button>'
         + '<button type="button" class="m-flat-row" data-go="inversiones"><span><b>Cartera Spot</b><small>' + nf(nw.total ? inv.value / nw.total * 100 : 0, 1) + '\u00A0% · ' + money(inv.day, { sign: true, d: 0 }) + ' en spot hoy</small></span><strong>' + money(inv.value, { d: 0 }) + '</strong></button>'
-        + (ds.count ? '<button type="button" class="m-flat-row" data-go="inversiones" data-inv-deriv="1"><span><b>' + (ds.count === 1 ? '1 derivado abierto' : ds.count + ' derivados abiertos') + '</b><small>Margen ' + money(ds.totalMarginEUR, { d: 0 }) + ' · PyG <em class="m-em ' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + '</em>' + (ds.minLiqDist != null ? ' · liq.\u00A0' + nf(ds.minLiqDist, 1) + '\u00A0%' : '') + '</small></span><strong>' + money(ds.equityEUR, { d: 0 }) + '</strong></button>' : '')
+        + (ds.count ? '<button type="button" class="m-flat-row" data-go="inversiones" data-inv-deriv="1"><span><b>' + (ds.count === 1 ? '1 derivado abierto' : ds.count + ' derivados abiertos') + '</b><small>Margen ' + money(ds.totalMarginEUR, { d: 0 }) + ' · PyG <em class="m-em ' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + '</em>' + (ds.minLiqDist != null ? ' · liq.\u00A0' + nf(ds.minLiqDist, 1) + '\u00A0%' : '') + '</small></span><strong>' + money(derivVal, { d: 0 }) + '</strong></button>' : '')
         + '</section>'
       : '')
     + '<section class="m-section"><div class="section-title"><h2>Tus cuentas</h2><button type="button" data-go="cuentas">Ver todas</button></div>'
     + '<div class="m-carousel">' + accs.slice(0, 8).map(a => accCard(a, nw.rows)).join('') + '<button type="button" class="acard acard-add" data-act="connect-hub">' + ico('plus') + '<span class="sub">Conectar</span></button></div></section>'
-    + '<section class="panel"><div class="section-title"><h2>Flujo de ' + monthLong(m).split(' ')[0] + '</h2><button type="button" data-go="movimientos">Detalle</button></div>'
-    + '<div class="flow-number"><span><small>Ingresos</small><b class="up">' + money(mt.inc, { d: 0 }) + '</b></span><span><small>Gastado</small><b>' + money(mt.exp, { d: 0 }) + '</b></span><span><small>Libre/día</small><b>' + money(s.per, { d: 0 }) + '</b></span></div>'
-    + (up.length ? '<div class="label">Próximos recibos</div>' + up.map(x => '<div class="upcoming-line"><time>' + fmtDate(x.next) + '</time><span><b>' + esc(fmtMerchant(x.name)) + '</b><small>' + esc(fmtFreq(x.every)) + '</small></span><strong>' + money(-x.amount, { d: 0 }) + '</strong></div>').join('') : '') + '</section>'
-    + (assets.length ? '<section class="panel"><div class="section-title"><h2>Activos en vivo</h2><button type="button" data-go="inversiones">Mercados</button></div>' + assets.slice(0, 5).map(x => '<button type="button" class="asset-line" data-asset="' + esc(x.asset) + '"><i style="background:' + assetColor(x.asset) + '">' + esc(x.asset.slice(0, 4)) + '</i><span><b>' + esc(state.assets[x.asset]?.name || x.asset) + '</b><small>' + nf(x.qty, x.qty < 1 ? 6 : 2, 0) + ' ' + esc(x.asset) + '</small></span><strong>' + money(x.eur, { d: 0 }) + '<small data-live-chg="' + esc(x.asset) + '" class="' + cls(state.prices[x.asset]?.chg) + '">' + (state.prices[x.asset]?.chg != null ? pct(state.prices[x.asset].chg) : '') + '</small></strong></button>').join('') + '</section>' : '')
+    + '<section class="panel"><div class="section-title"><h2>Flujo de ' + monthCap + '</h2><button type="button" data-go="movimientos">Movimientos →</button></div>'
+    + '<div class="flow-number"><span><small>Ingresos</small><b class="up">' + money(mt.inc, { d: 0 }) + '</b></span><span><small>Gastos</small><b>' + money(mt.exp, { d: 0 }) + '</b></span><span><small>Balance</small><b class="' + cls(mt.save) + '">' + money(mt.save, { sign: true, d: 0 }) + '</b></span></div>'
+    + '<div class="change-grid" style="margin-top:8px"><div class="change-cell"><small>Margen/día</small><b>' + money(s.per, { d: 0 }) + '/día</b><span>ritmo mes</span></div><div class="change-cell"><small>Colchón</small><b>' + (cush == null ? '—' : nf(cush, 1) + '\u00A0m') + '</b><span>media ' + money(avgExp, { d: 0 }) + '</span></div>' + thirdFlowCell + '</div>'
+    + (up.length ? '<div class="label">Próximos cargos</div>' + up.map(x => '<div class="upcoming-line"><time>' + fmtDate(x.next) + '</time><span><b>' + esc(fmtMerchant(x.name)) + '</b><small>' + esc(fmtFreq(x.every)) + '</small></span><strong>' + money(-x.amount, { d: 0 }) + '</strong></div>').join('') : '')
+    + '<div style="margin-top:10px">' + btn(ico('brain') + 'Revisar ' + monthWord + ' con Copiloto IA', 'data-go="copiloto"', 'ai full') + '</div></section>'
+    + (hasInv
+      ? (assets.length ? '<section class="panel"><div class="section-title"><h2>Activos en vivo</h2><button type="button" data-go="inversiones">Mercados →</button></div>' + assets.slice(0, 5).map(x => '<button type="button" class="asset-line" data-asset="' + esc(x.asset) + '"><i style="background:' + assetColor(x.asset) + '">' + esc(x.asset.slice(0, 4)) + '</i><span><b>' + esc(state.assets[x.asset]?.name || x.asset) + '</b><small>' + nf(x.qty, x.qty < 1 ? 6 : 2, 0) + ' ' + esc(x.asset) + '</small></span><strong>' + money(x.eur, { d: 0 }) + '<small data-live-chg="' + esc(x.asset) + '" class="' + cls(state.prices[x.asset]?.chg) + '">' + (state.prices[x.asset]?.chg != null ? pct(state.prices[x.asset].chg) : '') + '</small></strong></button>').join('') + '</section>' : '')
+      : '<section class="panel"><div class="section-title"><h2>Gastos de ' + monthWord + '</h2><button type="button" data-go="movimientos">Detalle →</button></div>' + (cats.length ? cats.slice(0, 4).map(([k, v]) => catRow(k, v, maxCat, mt.exp, 'data-go="movimientos"')).join('') : compactEmpty('Sin gastos este mes', 'Importa un extracto para ver categorías.')) + '<div class="panel-foot">' + svgCompare(m) + '</div></section>')
     + (al.length ? '<section class="panel"><div class="section-title"><h2>Avisos (' + al.length + ')</h2><button type="button" data-go="copiloto">Preguntar IA</button></div>' + al.map(a => '<div class="decision-line"><b>' + esc(a.txt) + '</b><button type="button" data-dismiss="' + esc(a.id) + '" aria-label="Descartar">×</button></div>').join('') + '</section>' : '')
-    + '<section class="panel"><div class="section-title"><h2>Últimos movimientos</h2><button type="button" data-go="movimientos">Ver todos</button></div>' + (last.map(txItem).join('') || compactEmpty('Sin movimientos', 'Importa tu extracto.')) + '</section>'
+    + '<section class="panel"><div class="section-title"><h2>Movimientos recientes</h2><button type="button" data-go="movimientos">Ver todos →</button></div>' + (last.map(txItem).join('') || compactEmpty('Sin movimientos', 'Importa tu extracto.')) + '</section>'
     + (state.settings.gestureHint ? '<div class="gesture-hint"><span><b>Gestos con el pulgar:</b> desliza a los lados para cambiar de pestaña o abrir el menú.</span><button type="button" data-set="gestureHint" data-val="false">Entendido</button></div>' : '')
     + '</div>';
 }
@@ -89,7 +110,7 @@ function vMovsMobile() {
   const months = [...new Set(state.tx.map(t => monthKey(t.date)))].sort().reverse();
   if ((filt.m && !months.includes(filt.m)) || (!filt.m && !filt.all)) filt.m = months[0];
   const rows = filtered(), base = state.tx.filter(t => (!filt.m || monthKey(t.date) === filt.m) && !isInternal(t));
-  const inc = sum(base.filter(t => t.amount > 0).map(t => t.amount)), exp = -sum(base.filter(t => t.amount < 0).map(t => t.amount));
+  const inc = sum(base.filter(t => t.amount > 0 && catById(t.cat).kind === 'income').map(t => t.amount)), exp = -sum(base.filter(t => t.amount < 0).map(t => t.amount));
   const byCat = {}; for (const t of base) if (t.amount < 0) byCat[t.cat] = (byCat[t.cat] || 0) - t.amount;
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]), maxCat = cats[0]?.[1] || 1;
   const byDay = {}; for (const t of rows.slice(0, 250)) (byDay[t.date] = byDay[t.date] || []).push(t);

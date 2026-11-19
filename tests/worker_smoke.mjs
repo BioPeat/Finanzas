@@ -7,7 +7,8 @@ const worker = mod.default;
 const store = new Map();
 const CAUDAL = {
   async get(k, type) { const v = store.get(k) ?? null; return type === 'json' && v ? JSON.parse(v) : v; },
-  async put(k, v) { store.set(k, v); }
+  async put(k, v) { store.set(k, v); },
+  async delete(k) { store.delete(k); }
 };
 const env = { TOKEN: 'TOKEN-DE-PRUEBA-1234567890', ALLOWED_ORIGIN: 'https://usuario.github.io', CAUDAL };
 const call = async (path, { method = 'GET', origin = env.ALLOWED_ORIGIN, token = env.TOKEN, body } = {}) =>
@@ -33,11 +34,19 @@ r = await call('/sync/' + id, { method: 'PUT', body: JSON.stringify({ ...payload
 
 r = await call('/backups/' + id); assert.equal(r.status, 200);
 
-// Unknown >= 24-char token from ALLOWED_ORIGIN MUST be rejected with 401 (no Origin-based auto-adoption)
+// Unknown >= 24-char token from ALLOWED_ORIGIN MUST be rejected with 401 once owner is bound
 const unknownLongToken = 'TOKEN-DESCONOCIDO-LARGO-2026-XYZ-999';
 r = await call('/ping', { token: unknownLongToken }); assert.equal(r.status, 401);
 r = await call('/sync/' + id, { token: unknownLongToken }); assert.equal(r.status, 401);
 assert.equal(await CAUDAL.get('auth:tokens'), null);
+
+// Single-owner TOFU binding on first /sync/<id> when auth:owner_sha256 is unset
+store.delete('auth:owner_sha256');
+const ownerBrowserToken = 'USER-BROWSER-TOKEN-2026-ABCDEF123';
+r = await call('/sync/' + id, { token: ownerBrowserToken }); assert.equal(r.status, 200);
+r = await call('/ping', { token: ownerBrowserToken }); assert.equal(r.status, 200);
+r = await call('/ping', { token: 'OTHER-UNKNOWN-TOKEN-2026-XYZ987' }); assert.equal(r.status, 401);
+r = await call('/sync/' + id, { token: 'OTHER-UNKNOWN-TOKEN-2026-XYZ987' }); assert.equal(r.status, 401);
 
 // KV Credentials Vault (AES-GCM encrypted at rest in CAUDAL + env > KV precedence + zero secret leak)
 const testSecrets = {

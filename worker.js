@@ -549,6 +549,30 @@ async function safeEq(a, b) {
   return diff === 0;
 }
 
+async function sha256Hex(s) {
+  return hex(await crypto.subtle.digest('SHA-256', enc.encode(String(s || ''))));
+}
+
+async function checkToken(tok, env, origin, allowed, isSyncPath) {
+  const t = String(tok || '');
+  if (t.length < 20) return false;
+  if (await safeEq(t, env.TOKEN)) {
+    if (isSyncPath && env.CAUDAL) {
+      const cur = await env.CAUDAL.get('auth:owner_sha256');
+      if (!cur) await env.CAUDAL.put('auth:owner_sha256', await sha256Hex(t));
+    }
+    return true;
+  }
+  if (!env.CAUDAL || !allowed || origin !== allowed) return false;
+  const tokHash = await sha256Hex(t);
+  let ownerHash = await env.CAUDAL.get('auth:owner_sha256');
+  if (!ownerHash && isSyncPath) {
+    await env.CAUDAL.put('auth:owner_sha256', tokHash);
+    ownerHash = tokHash;
+  }
+  return !!ownerHash && (await safeEq(tokHash, ownerHash));
+}
+
 async function vaultKey(env) {
   const raw = await crypto.subtle.digest('SHA-256', enc.encode('caudal-vault-v1:' + String(env.TOKEN || '')));
   return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -617,7 +641,8 @@ export default {
     const url = new URL(req.url);
     if (!env.TOKEN || String(env.TOKEN).length < 20) return respond({ error: 'Falta TOKEN o es demasiado corto (mínimo 20 caracteres).' }, 500);
     const tok = req.headers.get('X-Caudal-Token') || '';
-    if (!(await safeEq(tok, env.TOKEN))) {
+    const isSyncPath = /^\/sync\/[a-f0-9]{20,64}$/.test(url.pathname);
+    if (!(await checkToken(tok, env, origin, allowed, isSyncPath))) {
       return respond({ error: 'TOKEN no coincide. En Ajustes → Vincular otro dispositivo abre el enlace desde tu sesión principal o introduce el TOKEN configurado en Cloudflare.' }, 401);
     }
     const effEnv = await withVault(env);

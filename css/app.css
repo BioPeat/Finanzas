@@ -533,7 +533,9 @@ body[data-view=resumen] .mobile-fab,body[data-view=inversiones] .mobile-fab,body
   .m-carousel>*{width:200px}
   .side,.desktop-topbar,.desktop-home,.ai-drawer{display:none!important}
   .topbar{display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:30;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;background:var(--bg);border-bottom:1px solid var(--line);max-width:100%}
-  .mobile-title{font-weight:720;font-size:17px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-logo{width:22px;height:22px;border-radius:6px;flex:none}
+  .mobile-connect-btn{min-height:44px;padding:0 10px!important;font-size:12px!important;border-radius:999px;flex:none}
+  .mobile-title{font-weight:720;font-size:16.5px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .topbar .grow{flex:1}
   .topbar .iconbtn{width:44px;height:44px;border-radius:50%;background:transparent;border:0;flex:none}
   main{padding:10px 14px calc(86px + env(safe-area-inset-bottom))}
@@ -554,10 +556,11 @@ body[data-view=resumen] .mobile-fab,body[data-view=inversiones] .mobile-fab,body
   .ai-msg{max-width:92%}
   .ai-composer input{min-width:0}
   .mobile-home{display:grid;gap:14px}
-  .mobile-hero{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px 14px 14px;text-align:center}
-  .mobile-hero .position-eyebrow{justify-content:center}
+  .mobile-hero{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px 14px 14px;text-align:left}
+  .m-hero-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .mobile-hero .position-eyebrow{justify-content:flex-start}
   .mobile-hero .position-value{font-size:clamp(37px,9.8vw,40px);margin-top:6px}
-  .mobile-hero .position-status{justify-content:center}
+  .mobile-hero .position-status{justify-content:flex-start}
   .mobile-hero .ranges{display:flex;width:100%;margin-top:8px}
   .mobile-hero .ranges button{flex:1;min-height:44px;padding:4px 2px}
   .head .actions .btn,.panel .btn.small{min-height:44px}
@@ -590,7 +593,7 @@ body[data-view=resumen] .mobile-fab,body[data-view=inversiones] .mobile-fab,body
   .drawer.open{transform:translateX(0)}.drawer-scrim.open{opacity:1;pointer-events:auto}
   .drawer.gesture,.drawer-scrim.gesture{transition:none!important}
   .drawer-head{display:flex;align-items:center;gap:12px;padding:0 4px 18px}.drawer-head img{width:36px;height:36px;border-radius:10px}.drawer-head b{font-size:18px}.drawer-head .iconbtn{margin-left:auto}
-  .drawer-nav{display:grid;gap:2px;overflow-y:auto}.drawer .nav{min-height:48px;font-size:15px}.drawer-foot{margin-top:auto;padding:14px 4px 0;border-top:1px solid var(--line);display:grid;gap:10px}.drawer-foot .quickrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .drawer-nav{display:grid;gap:2px;overflow-y:auto}.drawer .nav{min-height:48px;font-size:15px}.drawer-foot{margin-top:auto;padding:14px 4px 0;border-top:1px solid var(--line);display:grid;gap:10px}.drawer-foot .quickrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:22px 22px 0 0;max-height:92vh;border-bottom:0;will-change:transform}
   dialog[open]{animation:sheet .25s var(--ease)}
   @keyframes sheet{from{transform:translateY(100%)}}

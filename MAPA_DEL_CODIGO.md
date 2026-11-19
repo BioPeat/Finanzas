@@ -37,14 +37,14 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `mergeStates(local, remote)` · js/state.js:232
 - `scheduleSync(ms = 1500)` · js/state.js:261
 - `syncNow(manual = false)` · js/state.js:262
-- `ago(t)` · js/state.js:298
-- `paintSync()` · js/state.js:299
-- `pairLink()` · js/state.js:312
-- `readPair()` · js/state.js:313
-- `instKey(a)` · js/state.js:326
-- `assetColor(sym)` · js/state.js:335
-- `catInitials(c)` · js/state.js:341
-- `initials(s)` · js/state.js:345
+- `ago(t)` · js/state.js:301
+- `paintSync()` · js/state.js:302
+- `pairLink()` · js/state.js:315
+- `readPair()` · js/state.js:316
+- `instKey(a)` · js/state.js:336
+- `assetColor(sym)` · js/state.js:345
+- `catInitials(c)` · js/state.js:351
+- `initials(s)` · js/state.js:355
 
 ## js/finance.js
 ### Categorías, finanzas, cartera, derivados, análisis y fiscalidad España · línea 1
@@ -232,10 +232,10 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 ## js/views-mobile.js
 ### Vistas Móviles (experiencia táctil inspirada en Revolut, Santander y TradingView móvil) · línea 1
 - `vResumenMobile()` · js/views-mobile.js:4
-- `vInvMobile()` · js/views-mobile.js:52
-- `vMovsMobile()` · js/views-mobile.js:87
-- `vCuentasMobile()` · js/views-mobile.js:115
-- `vCopilotMobile()` · js/views-mobile.js:123
+- `vInvMobile()` · js/views-mobile.js:73
+- `vMovsMobile()` · js/views-mobile.js:108
+- `vCuentasMobile()` · js/views-mobile.js:136
+- `vCopilotMobile()` · js/views-mobile.js:144
 
 ## js/app.js
 ### Navegación, ventanas modales, acciones, gestos y arranque · línea 1
@@ -275,6 +275,6 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 ### Acciones centralizadas · línea 332
 - `confirmTwice(el)` · js/app.js:333
 - `act(a, el)` · js/app.js:335
-- `afterRender()` · js/app.js:543
-- `refreshAll(force)` · js/app.js:569
-- `init()` · js/app.js:577
+- `afterRender()` · js/app.js:565
+- `refreshAll(force)` · js/app.js:591
+- `init()` · js/app.js:599
