@@ -331,7 +331,8 @@ svg text{fill:var(--ink3);font:11px var(--sans)}
 .ring{--p:0;width:52px;height:52px;border-radius:50%;background:conic-gradient(var(--brand) calc(var(--p)*1%),var(--panel2) 0);display:grid;place-items:center;flex:none}
 .ring::after{content:attr(data-l);width:40px;height:40px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:11px;font-weight:750}
 .settings-stack{display:grid;gap:2px}
-.settings-row{display:grid;grid-template-columns:minmax(150px,1fr) auto;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
+.settings-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px;padding:11px 0;border-bottom:1px solid var(--line)}
+.settings-row>span{min-width:130px;flex:1}
 .settings-row:last-child{border-bottom:0}
 .settings-row small{display:block;color:var(--ink3);margin-top:2px;font-size:12px}
 .settings-group{border:1px solid var(--line);border-radius:var(--r);padding:0 18px;background:var(--panel);box-shadow:var(--shadow)}
@@ -419,8 +420,13 @@ body[data-view=resumen] .mobile-fab,body[data-view=inversiones] .mobile-fab,body
 .flow-number b{font-size:15px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
 
 @media(min-width:1024px) and (max-width:1260px){
+  .desktop-topbar{padding:10px 18px}
+  main{padding:20px 18px 56px}
+  .cmd-trigger kbd{display:none}
+  .ticker-strip .live-pill:nth-child(n+2){display:none}
   .market-terminal{grid-template-columns:minmax(0,1fr) 260px}
   .kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .span5,.span7{grid-column:span 6}
 }
 
 @media (max-width:1023px){

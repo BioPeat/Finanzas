@@ -437,11 +437,23 @@ async function callAIProvider(env, { provider, model, system, contents, maxToken
   if (!provider || !available[provider]) throw new Error('El proveedor elegido no está configurado en los secretos del Worker.');
   let text = '';
   if (provider === 'gemini') {
-    model = model || env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const candidates = [...new Set([model, env.GEMINI_MODEL, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash-lite'].filter(Boolean))];
     const body = { contents, generationConfig: { temperature, maxOutputTokens: maxTokens } };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
-    const r = await getJSON('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(env.GEMINI_API_KEY), { method: 'POST', timeout: 45000, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    text = r.candidates && r.candidates[0] && r.candidates[0].content && r.candidates[0].content.parts.map(x => x.text || '').join('');
+    let lastErr;
+    for (const m of candidates) {
+      try {
+        const r = await getJSON('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent?key=' + encodeURIComponent(env.GEMINI_API_KEY), { method: 'POST', timeout: 45000, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        text = r.candidates && r.candidates[0] && r.candidates[0].content && r.candidates[0].content.parts.map(x => x.text || '').join('');
+        model = m;
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (!/no longer available|not found|high demand|overloaded|unavailable|503|404/i.test(String(e && e.message || e))) throw e;
+      }
+    }
+    if (lastErr) throw lastErr;
   } else if (provider === 'anthropic') {
     model = model || env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest';
     const msgs = contents.map(c => ({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts.map(p => p.text ? { type: 'text', text: p.text } : { type: 'image', source: { type: 'base64', media_type: p.inlineData.mimeType, data: p.inlineData.data } }) }));
