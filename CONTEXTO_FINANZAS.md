@@ -1,6 +1,6 @@
 # CONTEXTO · Finanzas
 
-**Versión actual: v11** · revisión 7 · Worker **w5**
+**Versión actual: v11** · revisión 7 · Worker **w6**
 
 ## Qué es
 PWA local-first para comprender patrimonio, cuentas, movimientos, inversiones, riesgo, previsión y fiscalidad orientativa. Se publica en GitHub Pages y usa opcionalmente un Cloudflare Worker gratuito.
