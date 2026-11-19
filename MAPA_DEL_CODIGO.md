@@ -1,6 +1,7 @@
-﻿# MAPA DEL CÓDIGO · Finanzas v12
+# MAPA DEL CÓDIGO · Finanzas v12
 
 Generado automáticamente a partir de los módulos `js/*.js`.
+
 
 ## js/state.js
 ### Estado, almacenamiento local, sincronización cifrada y utilidades · línea 1
@@ -104,13 +105,13 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 ## js/charts.js
 ### Estado de interfaz y gráficos interactivos SVG (propios, sin librerías) · línea 1
 - `rangeBtns()` · js/charts.js:14
-- `svgLine(pts, { h, w, id = 'nw', col, axis = true } = {})` · js/charts.js:16
-- `svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', showSma = true } = {})` · js/charts.js:39
+- `svgLine(pts, { h, w, id = 'nw', col, axis = true } = )` · js/charts.js:16
+- `svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', s)` · js/charts.js:39
 - `svgCompare(m)` · js/charts.js:107
 - `svgDays(m)` · js/charts.js:129
 - `svgMonths(months)` · js/charts.js:141
 - `spendCalendarHTML(m)` · js/charts.js:148
-- `donut(entries, { id = 'cats', label = 'Gastado', total } = {})` · js/charts.js:163
+- `donut(entries, { id = 'cats', label = 'Gastado', to)` · js/charts.js:163
 - `allocBar(parts)` · js/charts.js:170
 - `bindCharts(root = document)` · js/charts.js:175
 
@@ -277,4 +278,3 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `afterRender()` · js/app.js:543
 - `refreshAll(force)` · js/app.js:569
 - `init()` · js/app.js:577
-
