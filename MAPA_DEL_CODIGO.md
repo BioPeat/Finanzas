@@ -19,99 +19,101 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `defaults()` · js/state.js:117
 - `load()` · js/state.js:139
 - `migrate(o)` · js/state.js:144
-- `autoBackup()` · js/state.js:153
-- `backupInfo()` · js/state.js:161
-- `restoreAutomaticBackup()` · js/state.js:162
-- `save(sync = true)` · js/state.js:172
-- `stampChanges(before)` · js/state.js:177
-- `change(fn, msg)` · js/state.js:193
-- `undo()` · js/state.js:200
-- `toast(text, canUndo = false)` · js/state.js:209
-### Sincronización cifrada entre dispositivos · línea 214
-- `b64u(b)` · js/state.js:215
-- `syncKey()` · js/state.js:217
-- `syncId()` · js/state.js:218
-- `syncPayload()` · js/state.js:219
-- `encrypt(obj)` · js/state.js:220
-- `decrypt(s)` · js/state.js:226
-- `mergeStates(local, remote)` · js/state.js:231
-- `scheduleSync(ms = 1500)` · js/state.js:260
-- `syncNow(manual = false)` · js/state.js:261
-- `ago(t)` · js/state.js:297
-- `paintSync()` · js/state.js:298
-- `pairLink()` · js/state.js:311
-- `readPair()` · js/state.js:312
-- `instKey(a)` · js/state.js:325
-- `assetColor(sym)` · js/state.js:334
-- `catInitials(c)` · js/state.js:340
-- `initials(s)` · js/state.js:344
+- `autoBackup()` · js/state.js:154
+- `backupInfo()` · js/state.js:162
+- `restoreAutomaticBackup()` · js/state.js:163
+- `save(sync = true)` · js/state.js:173
+- `stampChanges(before)` · js/state.js:178
+- `change(fn, msg)` · js/state.js:194
+- `undo()` · js/state.js:201
+- `toast(text, canUndo = false)` · js/state.js:210
+### Sincronización cifrada entre dispositivos · línea 215
+- `b64u(b)` · js/state.js:216
+- `syncKey()` · js/state.js:218
+- `syncId()` · js/state.js:219
+- `syncPayload()` · js/state.js:220
+- `encrypt(obj)` · js/state.js:221
+- `decrypt(s)` · js/state.js:227
+- `mergeStates(local, remote)` · js/state.js:232
+- `scheduleSync(ms = 1500)` · js/state.js:261
+- `syncNow(manual = false)` · js/state.js:262
+- `ago(t)` · js/state.js:298
+- `paintSync()` · js/state.js:299
+- `pairLink()` · js/state.js:312
+- `readPair()` · js/state.js:313
+- `instKey(a)` · js/state.js:326
+- `assetColor(sym)` · js/state.js:335
+- `catInitials(c)` · js/state.js:341
+- `initials(s)` · js/state.js:345
 
 ## js/finance.js
 ### Categorías, finanzas, cartera, derivados, análisis y fiscalidad España · línea 1
 - `merchantOf(desc)` · js/finance.js:38
-- `categorize(t)` · js/finance.js:46
-### Activos, divisas y normalización · línea 56
-- `normAsset(a)` · js/finance.js:64
-- `baseSym(instr)` · js/finance.js:69
-- `ensureAsset(sym)` · js/finance.js:76
-- `fx(cur)` · js/finance.js:78
-- `priceEUR(sym)` · js/finance.js:79
-- `trackedAssets()` · js/finance.js:85
-### Cartera, saldos y derivados en tiempo real · línea 94
-- `bankBalance(a)` · js/finance.js:95
-- `positionRows()` · js/finance.js:103
-- `accValue(a, rows)` · js/finance.js:115
-- `derivRows()` · js/finance.js:117
-- `derivSummary()` · js/finance.js:157
-- `netWorth()` · js/finance.js:167
-- `investmentSummary()` · js/finance.js:174
-- `snapshot()` · js/finance.js:187
-- `bankHistory(days = 365)` · js/finance.js:193
-- `reliableHistory(points)` · js/finance.js:204
-- `netSeries(days)` · js/finance.js:215
-- `changeWindow(days)` · js/finance.js:227
-- `invSeries(days)` · js/finance.js:247
-### Flujo mensual, previsiones y alertas · línea 270
-- `monthTotals(m)` · js/finance.js:271
-- `lastMonths(n)` · js/finance.js:277
-- `recurring()` · js/finance.js:279
-- `liquidity()` · js/finance.js:291
-- `avgMonthlyExpense()` · js/finance.js:292
-- `cushion()` · js/finance.js:297
-- `pace()` · js/finance.js:298
-- `upcoming(days = 31)` · js/finance.js:303
-- `forecast()` · js/finance.js:316
-- `safeToSpend()` · js/finance.js:328
-- `topMerchants(m, n = 5)` · js/finance.js:335
-- `dailySpend(m)` · js/finance.js:336
-- `goalSaved(g)` · js/finance.js:337
-- `alerts()` · js/finance.js:339
-### Fiscalidad España (FIFO, base del ahorro, Modelo 721) · línea 362
-- `cuotaAhorro(base)` · js/finance.js:364
-- `matchTransfers(L)` · js/finance.js:365
-- `taxGroups()` · js/finance.js:374
-- `taxPrefetch(onStep)` · js/finance.js:379
-- `taxCompute()` · js/finance.js:390
-- `costBasis()` · js/finance.js:435
-- `balancesAt(date)` · js/finance.js:436
-- `modelo721(year)` · js/finance.js:437
-- `taxSummary(year, extra = 0)` · js/finance.js:443
-- `byCoin(disp)` · js/finance.js:448
-- `taxCSV(year)` · js/finance.js:449
-- `taxAIText(year)` · js/finance.js:458
+- `fmtMerchant(s)` · js/finance.js:46
+- `fmtFreq(days)` · js/finance.js:49
+- `categorize(t)` · js/finance.js:59
+### Activos, divisas y normalización · línea 70
+- `normAsset(a)` · js/finance.js:78
+- `baseSym(instr)` · js/finance.js:83
+- `ensureAsset(sym)` · js/finance.js:90
+- `fx(cur)` · js/finance.js:92
+- `priceEUR(sym)` · js/finance.js:93
+- `trackedAssets()` · js/finance.js:99
+### Cartera, saldos y derivados en tiempo real · línea 108
+- `bankBalance(a)` · js/finance.js:109
+- `positionRows()` · js/finance.js:117
+- `accValue(a, rows)` · js/finance.js:129
+- `derivRows()` · js/finance.js:131
+- `derivSummary()` · js/finance.js:171
+- `netWorth()` · js/finance.js:183
+- `investmentSummary()` · js/finance.js:190
+- `snapshot()` · js/finance.js:203
+- `bankHistory(days = 365)` · js/finance.js:209
+- `reliableHistory(points)` · js/finance.js:220
+- `netSeries(days)` · js/finance.js:231
+- `changeWindow(days)` · js/finance.js:244
+- `invSeries(days)` · js/finance.js:264
+### Flujo mensual, previsiones y alertas · línea 287
+- `monthTotals(m = monthKey(today()` · js/finance.js:288
+- `lastMonths(n)` · js/finance.js:295
+- `recurring()` · js/finance.js:297
+- `liquidity()` · js/finance.js:309
+- `avgMonthlyExpense()` · js/finance.js:310
+- `cushion()` · js/finance.js:315
+- `pace()` · js/finance.js:316
+- `upcoming(days = 31)` · js/finance.js:321
+- `forecast()` · js/finance.js:334
+- `safeToSpend()` · js/finance.js:346
+- `topMerchants(m, n = 5)` · js/finance.js:353
+- `dailySpend(m)` · js/finance.js:354
+- `goalSaved(g)` · js/finance.js:355
+- `alerts()` · js/finance.js:357
+### Fiscalidad España (FIFO, base del ahorro, Modelo 721) · línea 380
+- `cuotaAhorro(base)` · js/finance.js:382
+- `matchTransfers(L)` · js/finance.js:383
+- `taxGroups()` · js/finance.js:392
+- `taxPrefetch(onStep)` · js/finance.js:397
+- `taxCompute()` · js/finance.js:408
+- `costBasis()` · js/finance.js:453
+- `balancesAt(date)` · js/finance.js:454
+- `modelo721(year)` · js/finance.js:455
+- `taxSummary(year, extra = 0)` · js/finance.js:461
+- `byCoin(disp)` · js/finance.js:466
+- `taxCSV(year)` · js/finance.js:467
+- `taxAIText(year)` · js/finance.js:476
 
 ## js/charts.js
 ### Estado de interfaz y gráficos interactivos SVG (propios, sin librerías) · línea 1
 - `rangeBtns()` · js/charts.js:14
 - `svgLine(pts, { h, w, id = 'nw', col, axis = true } = )` · js/charts.js:16
-- `svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', s)` · js/charts.js:37
-- `svgCompare(m)` · js/charts.js:100
-- `svgDays(m)` · js/charts.js:114
-- `svgMonths(months)` · js/charts.js:126
-- `spendCalendarHTML(m)` · js/charts.js:133
-- `donut(entries, { id = 'cats', label = 'Gastado', to)` · js/charts.js:148
-- `allocBar(parts)` · js/charts.js:155
-- `bindCharts(root = document)` · js/charts.js:160
+- `svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', s)` · js/charts.js:39
+- `svgCompare(m)` · js/charts.js:107
+- `svgDays(m)` · js/charts.js:129
+- `svgMonths(months)` · js/charts.js:141
+- `spendCalendarHTML(m)` · js/charts.js:148
+- `donut(entries, { id = 'cats', label = 'Gastado', to)` · js/charts.js:163
+- `allocBar(parts)` · js/charts.js:170
+- `bindCharts(root = document)` · js/charts.js:175
 
 ## js/importers.js
 ### Importadores universales (XLSX, CSV, OFX, QIF, JSON y extracción IA) · línea 1
@@ -161,10 +163,11 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `syncOnChainWallets(manual = false)` · js/connectors.js:72
 ### Open Banking PSD2 gratuito (Enable Banking) · línea 95
 - `openBankConnectModal()` · js/connectors.js:96
-- `startBankAuth(aspspName, country)` · js/connectors.js:131
-- `handleBankCallback()` · js/connectors.js:143
-- `syncConnectedBanks(manual = false)` · js/connectors.js:169
-- `openConnectHub()` · js/connectors.js:191
+- `startBankAuth(aspspName, country)` · js/connectors.js:133
+- `handleBankCallback()` · js/connectors.js:145
+- `syncConnectedBanks(manual = false)` · js/connectors.js:171
+- `saveVaultCredentials(group, opts = {})` · js/connectors.js:257
+- `openConnectHub(initialTab = 'bancos')` · js/connectors.js:320
 
 ## js/ai.js
 ### Copiloto de IA: Chat conversacional (Gemini / Local), análisis, categorización y extracción · línea 1
@@ -186,52 +189,53 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `head(title, sub, actions = '')` · js/views-desktop.js:5
 - `compactEmpty(title, text, action = '')` · js/views-desktop.js:6
 - `changeCell(days, label)` · js/views-desktop.js:7
-- `accountLine(a, rows)` · js/views-desktop.js:11
-- `homeAssets(rows)` · js/views-desktop.js:16
-- `txItem(t)` · js/views-desktop.js:20
-- `catRow(k, v, max, total, attrs)` · js/views-desktop.js:24
-- `goalRow(g)` · js/views-desktop.js:28
-- `holdingRow(x)` · js/views-desktop.js:33
-- `accCard(a, rows)` · js/views-desktop.js:37
-- `derivCardHTML(d)` · js/views-desktop.js:43
-- `opsTable(ops, hideAcc = false)` · js/views-desktop.js:62
-- `invDonut(list)` · js/views-desktop.js:67
-- `workerInfoHTML(i)` · js/views-desktop.js:72
-- `onboarding()` · js/views-desktop.js:79
-### Barra superior en directo y Drawer IA de Escritorio · línea 88
-- `renderDesktopTopbar()` · js/views-desktop.js:89
-- `renderAIDrawer()` · js/views-desktop.js:104
-### 1. Inicio Escritorio (Centro de Control Bento) · línea 117
-- `vResumenDesktop()` · js/views-desktop.js:118
-### 2. Terminal de Mercados, Velas en directo y Derivados (Escritorio) · línea 164
-- `buildPortfolioContext()` · js/views-desktop.js:165
-- `portfolioMetrics(list, total)` · js/views-desktop.js:176
-- `watchlistSymbols(list)` · js/views-desktop.js:182
-- `marketChartDeck(sym)` · js/views-desktop.js:186
-- `vInvDesktop()` · js/views-desktop.js:205
-### 3. Movimientos (Escritorio) · línea 274
-- `filtered()` · js/views-desktop.js:275
-- `vMovsDesktop()` · js/views-desktop.js:280
-### 4. Cuentas y Detalle de Cuenta · línea 315
-- `vAccountDetail(accId)` · js/views-desktop.js:316
-- `vCuentasDesktop()` · js/views-desktop.js:339
-### 5. Plan, Presupuestos y Alertas de precio · línea 351
-- `vGoalsDesktop()` · js/views-desktop.js:352
-### 6. Impuestos España · línea 369
-- `vTax()` · js/views-desktop.js:370
-### 7. Copiloto IA Studio (Escritorio) · línea 391
-- `vCopilotDesktop()` · js/views-desktop.js:392
-### 8. Ajustes · línea 413
-- `vAjustes()` · js/views-desktop.js:415
-- `vMasDesktop()` · js/views-desktop.js:442
+- `changeGridHTML(tag = 'div', attrs = '')` · js/views-desktop.js:11
+- `accountLine(a, rows)` · js/views-desktop.js:36
+- `homeAssets(rows)` · js/views-desktop.js:41
+- `txItem(t)` · js/views-desktop.js:45
+- `catRow(k, v, max, total, attrs)` · js/views-desktop.js:50
+- `goalRow(g)` · js/views-desktop.js:54
+- `holdingRow(x)` · js/views-desktop.js:59
+- `accCard(a, rows)` · js/views-desktop.js:63
+- `derivCardHTML(d)` · js/views-desktop.js:71
+- `opsTable(ops, hideAcc = false)` · js/views-desktop.js:90
+- `invDonut(list)` · js/views-desktop.js:95
+- `workerInfoHTML(i)` · js/views-desktop.js:100
+- `onboarding()` · js/views-desktop.js:107
+### Barra superior Command Header y Drawer IA de Escritorio · línea 116
+- `renderDesktopTopbar()` · js/views-desktop.js:117
+- `renderAIDrawer()` · js/views-desktop.js:154
+### 1. Inicio Escritorio (Centro de Control Bento — Sin duplicidades) · línea 167
+- `vResumenDesktop()` · js/views-desktop.js:168
+### 2. Terminal de Mercados, Velas en directo y Derivados (Escritorio) · línea 269
+- `buildPortfolioContext()` · js/views-desktop.js:270
+- `portfolioMetrics(list, total)` · js/views-desktop.js:281
+- `watchlistSymbols(list)` · js/views-desktop.js:287
+- `marketChartDeck(sym)` · js/views-desktop.js:291
+- `vInvDesktop()` · js/views-desktop.js:310
+### 3. Movimientos (Escritorio) · línea 379
+- `filtered()` · js/views-desktop.js:380
+- `vMovsDesktop()` · js/views-desktop.js:385
+### 4. Cuentas y Detalle de Cuenta · línea 420
+- `vAccountDetail(accId)` · js/views-desktop.js:421
+- `vCuentasDesktop()` · js/views-desktop.js:444
+### 5. Plan, Presupuestos y Alertas de precio · línea 456
+- `vGoalsDesktop()` · js/views-desktop.js:457
+### 6. Impuestos España · línea 474
+- `vTax()` · js/views-desktop.js:475
+### 7. Copiloto IA Studio (Escritorio) · línea 496
+- `vCopilotDesktop()` · js/views-desktop.js:497
+### 8. Ajustes · línea 518
+- `vAjustes()` · js/views-desktop.js:520
+- `vMasDesktop()` · js/views-desktop.js:547
 
 ## js/views-mobile.js
 ### Vistas Móviles (experiencia táctil inspirada en Revolut, Santander y TradingView móvil) · línea 1
 - `vResumenMobile()` · js/views-mobile.js:4
-- `vInvMobile()` · js/views-mobile.js:48
-- `vMovsMobile()` · js/views-mobile.js:83
-- `vCuentasMobile()` · js/views-mobile.js:111
-- `vCopilotMobile()` · js/views-mobile.js:119
+- `vInvMobile()` · js/views-mobile.js:52
+- `vMovsMobile()` · js/views-mobile.js:87
+- `vCuentasMobile()` · js/views-mobile.js:115
+- `vCopilotMobile()` · js/views-mobile.js:123
 
 ## js/app.js
 ### Navegación, ventanas modales, acciones, gestos y arranque · línea 1
