@@ -33,6 +33,106 @@ r = await call('/sync/' + id, { method: 'PUT', body: JSON.stringify({ ...payload
 
 r = await call('/backups/' + id); assert.equal(r.status, 200);
 
+// Unknown >= 24-char token from ALLOWED_ORIGIN MUST be rejected with 401 (no Origin-based auto-adoption)
+const unknownLongToken = 'TOKEN-DESCONOCIDO-LARGO-2026-XYZ-999';
+r = await call('/ping', { token: unknownLongToken }); assert.equal(r.status, 401);
+r = await call('/sync/' + id, { token: unknownLongToken }); assert.equal(r.status, 401);
+assert.equal(await CAUDAL.get('auth:tokens'), null);
+
+// KV Credentials Vault (AES-GCM encrypted at rest in CAUDAL + env > KV precedence + zero secret leak)
+const testSecrets = {
+  OKX_KEY: 'okx_key_secret_value_111',
+  OKX_SECRET: 'okx_sec_secret_value_222',
+  OKX_PASSPHRASE: 'okx_pass_secret_value_333',
+  KUCOIN_KEY: 'kc_key_secret_value_444',
+  KUCOIN_SECRET: 'kc_sec_secret_value_555',
+  KUCOIN_PASSPHRASE: 'kc_pass_secret_value_666'
+};
+r = await call('/credentials', { method: 'POST', body: JSON.stringify({ set: testSecrets }) });
+assert.equal(r.status, 200);
+j = await r.json();
+assert.equal(j.exchanges.okx, true);
+assert.equal(j.exchanges.kucoin, true);
+for (const secVal of Object.values(testSecrets)) {
+  assert.equal(JSON.stringify(j).includes(secVal), false);
+}
+const rawVaultStr = await CAUDAL.get('vault:credentials');
+assert.equal(typeof rawVaultStr, 'string');
+for (const secVal of Object.values(testSecrets)) {
+  assert.equal(rawVaultStr.includes(secVal), false);
+}
+const rawVaultObj = await CAUDAL.get('vault:credentials', 'json');
+assert.equal(rawVaultObj.v, 1);
+assert.equal(typeof rawVaultObj.iv, 'string');
+assert.equal(typeof rawVaultObj.ct, 'string');
+assert.equal('OKX_KEY' in rawVaultObj, false);
+
+r = await call('/ping');
+assert.equal(r.status, 200);
+j = await r.json();
+assert.equal(j.exchanges.okx, true);
+assert.equal(j.exchanges.kucoin, true);
+for (const secVal of Object.values(testSecrets)) {
+  assert.equal(JSON.stringify(j).includes(secVal), false);
+}
+
+r = await call('/credentials');
+assert.equal(r.status, 200);
+j = await r.json();
+assert.equal(j.exchanges.okx, true);
+assert.equal(j.vaultLocked, false);
+assert.equal(j.credentialSources.okx, 'vault');
+assert.equal(j.credentialSources.kucoin, 'vault');
+assert.equal(j.credentialSources.bybit, null);
+for (const secVal of Object.values(testSecrets)) {
+  assert.equal(JSON.stringify(j).includes(secVal), false);
+}
+
+// Verify env > KV precedence in credentialSources ('env' when configured in Cloudflare env)
+const envWithBinance = { ...env, BINANCE_KEY: 'env_bn_key', BINANCE_SECRET: 'env_bn_sec' };
+r = await worker.fetch(new Request('https://worker.test/ping', { headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN } }), envWithBinance);
+j = await r.json();
+assert.equal(r.status, 200);
+assert.equal(j.credentialSources.binance, 'env');
+assert.equal(j.credentialSources.okx, 'vault');
+
+// Verify automatic migration of legacy plaintext vault JSON on read -> encrypted { v: 1, iv, ct }
+await CAUDAL.put('vault:credentials', JSON.stringify({ BYBIT_KEY: 'legacy_bb_key_999', BYBIT_SECRET: 'legacy_bb_sec_999' }));
+r = await call('/ping');
+j = await r.json();
+assert.equal(r.status, 200);
+assert.equal(j.exchanges.bybit, true);
+assert.equal(j.credentialSources.bybit, 'vault');
+assert.equal(j.vaultLocked, false);
+const migratedRaw = await CAUDAL.get('vault:credentials');
+assert.equal(migratedRaw.includes('legacy_bb_key_999'), false);
+const migratedObj = await CAUDAL.get('vault:credentials', 'json');
+assert.equal(migratedObj.v, 1);
+
+// Verify rotated TOKEN exposes vaultLocked: true on /ping, returns 409 on POST /credentials without forceReset, and succeeds with forceReset: true
+const envRotated = { ...env, TOKEN: 'TOKEN-ROTADO-NUEVO-9876543210-ABCDEF' };
+r = await worker.fetch(new Request('https://worker.test/ping', { headers: { Origin: envRotated.ALLOWED_ORIGIN, 'X-Caudal-Token': envRotated.TOKEN } }), envRotated);
+j = await r.json();
+assert.equal(r.status, 200);
+assert.equal(j.vaultLocked, true);
+assert.equal(j.exchanges.bybit, false);
+
+r = await worker.fetch(new Request('https://worker.test/credentials', { method: 'POST', headers: { Origin: envRotated.ALLOWED_ORIGIN, 'X-Caudal-Token': envRotated.TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ set: testSecrets }) }), envRotated);
+j = await r.json();
+assert.equal(r.status, 409);
+assert.equal(j.vaultLocked, true);
+
+r = await worker.fetch(new Request('https://worker.test/credentials', { method: 'POST', headers: { Origin: envRotated.ALLOWED_ORIGIN, 'X-Caudal-Token': envRotated.TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ set: testSecrets, forceReset: true }) }), envRotated);
+j = await r.json();
+assert.equal(r.status, 200);
+assert.equal(j.vaultLocked, false);
+assert.equal(j.exchanges.okx, true);
+assert.equal(j.credentialSources.okx, 'vault');
+
+// Restore vault encrypted under original env.TOKEN for subsequent tests
+r = await call('/credentials', { method: 'POST', body: JSON.stringify({ set: testSecrets, forceReset: true }) });
+assert.equal(r.status, 200);
+
 for (const body of [
   { mode: 'preset', provider: 'auto', payload: { kind: 'quality' } },
   { mode: 'chat', provider: 'auto', messages: [{ role: 'user', text: 'Hola' }], context: {} },

@@ -1,6 +1,6 @@
 // ===== Estado, almacenamiento local, sincronización cifrada y utilidades =====
 "use strict";
-const APP_VERSION = 'v12', APP_REVISION = 10, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
+const APP_VERSION = 'v12', APP_REVISION = 13, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
 
 const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -146,6 +146,7 @@ function migrate(o) {
   for (const k of [...LISTS, 'apiDerivs']) if (!Array.isArray(s[k])) s[k] = [];
   for (const k of ['assets', 'costs', 'prices', 'hist', 'snaps', 'ohlcv', 'apiBal', 'budgets', 'dismissed', 'watchlist', 'market', 'deleted', 'stamps']) if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {};
   for (const r of s.rules) if (!r.id) r.id = 'r:' + r.match;
+  for (const t of s.tx) if (t && t.cat === 'otros' && /(?:AJUSTE|SALDO)\s+INICIAL|APERTURA\s+DE\s+CUENTA|REGULARIZACI[OÓ]N\s+INICIAL/i.test(String(t.desc || ''))) t.cat = 'interno';
   s.appRevision = APP_REVISION;
   if (!s.settings.deviceId) s.settings.deviceId = 'dev_' + uid();
   return s;
@@ -300,11 +301,11 @@ function paintSync() {
   const clsDot = !on ? '' : syncState === 'busy' ? 'busy' : syncState === 'err' || syncState === 'off' ? 'err' : t ? 'ok' : '';
   const txt = !on ? 'Solo local' : syncState === 'busy' ? 'Sincronizando…' : syncState === 'err' ? 'Reintentar sync' : syncState === 'off' ? 'Sin conexión' : 'Al día ' + ago(t);
   for (const id of ['sync-side', 'sync-drawer']) if ($(id)) $(id).innerHTML = '<span class="dot ' + clsDot + '"></span>' + txt;
-  if ($('sync-top')) {
-    const topLabel = !on ? 'Local' : syncState === 'busy' ? 'Sync…' : syncState === 'err' ? 'Error sync' : syncState === 'off' ? 'Offline' : 'Sync OK';
-    $('sync-top').className = 'sync-pill ' + clsDot;
-    $('sync-top').innerHTML = '<span class="dot ' + clsDot + '"></span><span>' + topLabel + '</span>';
-    $('sync-top').title = txt;
+  const topLabel = !on ? 'Local' : syncState === 'busy' ? 'Sync…' : syncState === 'err' ? 'Error' : syncState === 'off' ? 'Offline' : 'Sync';
+  for (const id of ['sync-top', 'sync-top-desktop']) if ($(id)) {
+    $(id).className = 'sync-pill ' + clsDot;
+    $(id).innerHTML = '<span class="dot ' + clsDot + '"></span><span>' + topLabel + '</span>';
+    $(id).title = txt;
   }
   $$('[data-syncstate]').forEach(e => e.innerHTML = '<span class="row" style="gap:8px"><span class="dot ' + clsDot + '"></span>' + txt + (syncState === 'err' && state.syncError ? ' · <span class="down">' + esc(state.syncError) + '</span>' : '') + '</span>');
 }

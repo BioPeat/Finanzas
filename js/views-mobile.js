@@ -8,7 +8,9 @@ function vResumenMobile() {
       + '<div class="row" style="justify-content:center;margin-top:16px">' + btn(ico('upload') + 'Importar archivo', 'data-act="import"', 'primary') + btn(ico('link') + 'Conectar cuentas', 'data-act="connect-hub"') + '</div></section>'
       + onboarding() + '</div>';
   }
-  const nw = netWorth(), inv = investmentSummary(), ds = derivSummary(), ser = netSeries(rangeDays()), pts = ser.pts, chg = pts.length > 1 ? pts.at(-1)[1] - pts[0][1] : null;
+  const nw = netWorth(), inv = investmentSummary(), ds = derivSummary(), ser = netSeries(rangeDays()), pts = ser.pts;
+  const cw = range === 'Máx' ? null : changeWindow(rangeDays());
+  const chg = cw ? cw.value : (pts.length > 1 ? pts.at(-1)[1] - pts[0][1] : null);
   const isB = a => a.kind === 'bank' || a.kind === 'cash';
   const accs = state.accounts.slice().sort((a, b) => (isB(b) - isB(a)) || (accValue(b, nw.rows) - accValue(a, nw.rows))), assets = homeAssets(nw.rows), cash = sum(nw.rows.filter(r => r.bank).map(r => r.eur)), derivEq = nw.parts.deriv || 0, invAll = inv.value + derivEq;
   const m = monthKey(today()), mt = monthTotals(m), s = safeToSpend(), up = upcoming(31).slice(0, 3), al = alerts().slice(0, 3);
@@ -19,7 +21,7 @@ function vResumenMobile() {
     + '<div class="position-eyebrow"><span>Patrimonio neto · ' + fmtDate(today(), { day: 'numeric', month: 'short' }) + '</span></div>'
     + '<div class="position-value" data-live-nw>' + moneyBig(nw.total) + '</div>'
     + '<div class="position-status">' + (chg == null ? '<span>Base inicial</span>' : '<span class="pill ' + cls(chg) + '">' + money(chg, { sign: true, d: 0 }) + ' · ' + RANGE_TXT[range] + '</span>') + '</div>'
-    + '<div class="position-chart" style="margin:12px -4px 4px">' + svgLine(pts, { id: 'nw', h: 108, axis: false }) + '</div>'
+    + '<div class="position-chart m-hero-chart">' + svgLine(pts, { id: 'nw', h: 108, axis: false }) + '</div>'
     + rangeBtns()
     + '<div class="m-quick-actions">'
     + '<button type="button" class="m-qbtn primary" data-act="quick"><span>' + ico('plus') + '</span><small>Apuntar</small></button>'
@@ -27,17 +29,19 @@ function vResumenMobile() {
     + '<button type="button" class="m-qbtn" data-act="' + (state.settings.worker ? 'refresh' : 'prices') + '"><span>' + ico('sync') + '</span><small>Actualizar</small></button>'
     + '<button type="button" class="m-qbtn ai" data-go="copiloto"><span>' + ico('brain') + '</span><small>Copiloto</small></button>'
     + '</div></section>'
-    + '<section class="change-grid" aria-label="Cambios reales">' + changeCell(1, 'Hoy') + changeCell(7, '7 días') + changeCell(30, '30 días') + '</section>'
-    + '<section class="panel"><div class="balance-split" style="margin-bottom:' + (ds.count ? '10px' : '0') + '">'
-    + '<button type="button" data-go="cuentas"><small>En bancos (líquido)</small><b>' + money(cash, { d: 0 }) + '</b><span>' + nf(nw.total ? cash / nw.total * 100 : 0, 1) + '\u00A0% del total</span></button>'
-    + '<button type="button" data-go="inversiones"><small>Cartera e inversión</small><b>' + money(invAll, { d: 0 }) + '</b><span>' + nf(nw.total ? invAll / nw.total * 100 : 0, 1) + '\u00A0% del total</span></button></div>'
-    + (ds.count ? '<button type="button" class="account-line" data-go="inversiones" data-inv-deriv="1"><span class="account-mark" style="color:var(--inv)">' + ico('trend') + '</span><span><b>' + (ds.count === 1 ? '1 derivado abierto' : ds.count + ' derivados abiertos') + '</b><small>Margen ' + money(ds.totalMarginEUR, { d: 0 }) + (ds.minLiqDist != null ? ' · liq.\u00A0' + nf(ds.minLiqDist, 1) + '\u00A0%' : '') + '</small></span><strong class="' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true }) + '</strong></button>' : '')
-    + '</section>'
+    + changeGridHTML('section', 'aria-label="Cambios reales"')
+    + ((assets.length || ds.count || Math.abs(invAll) >= 1)
+      ? '<section class="panel m-flat-panel">'
+        + '<button type="button" class="m-flat-row" data-go="cuentas"><span><b>En bancos (líquido)</b><small>' + nf(nw.total ? cash / nw.total * 100 : 0, 1) + '\u00A0% del patrimonio</small></span><strong>' + money(cash, { d: 0 }) + '</strong></button>'
+        + '<button type="button" class="m-flat-row" data-go="inversiones"><span><b>Cartera Spot</b><small>' + nf(nw.total ? inv.value / nw.total * 100 : 0, 1) + '\u00A0% · ' + money(inv.day, { sign: true, d: 0 }) + ' en spot hoy</small></span><strong>' + money(inv.value, { d: 0 }) + '</strong></button>'
+        + (ds.count ? '<button type="button" class="m-flat-row" data-go="inversiones" data-inv-deriv="1"><span><b>' + (ds.count === 1 ? '1 derivado abierto' : ds.count + ' derivados abiertos') + '</b><small>Margen ' + money(ds.totalMarginEUR, { d: 0 }) + ' · PyG <em class="m-em ' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + '</em>' + (ds.minLiqDist != null ? ' · liq.\u00A0' + nf(ds.minLiqDist, 1) + '\u00A0%' : '') + '</small></span><strong>' + money(ds.equityEUR, { d: 0 }) + '</strong></button>' : '')
+        + '</section>'
+      : '')
     + '<section class="m-section"><div class="section-title"><h2>Tus cuentas</h2><button type="button" data-go="cuentas">Ver todas</button></div>'
-    + '<div class="m-carousel">' + accs.slice(0, 8).map(a => accCard(a, nw.rows)).join('') + '<button type="button" class="acard" style="align-items:center;justify-content:center;border-style:dashed;width:150px" data-act="connect-hub">' + ico('plus') + '<span class="sub">Conectar</span></button></div></section>'
+    + '<div class="m-carousel">' + accs.slice(0, 8).map(a => accCard(a, nw.rows)).join('') + '<button type="button" class="acard acard-add" data-act="connect-hub">' + ico('plus') + '<span class="sub">Conectar</span></button></div></section>'
     + '<section class="panel"><div class="section-title"><h2>Flujo de ' + monthLong(m).split(' ')[0] + '</h2><button type="button" data-go="movimientos">Detalle</button></div>'
     + '<div class="flow-number"><span><small>Ingresos</small><b class="up">' + money(mt.inc, { d: 0 }) + '</b></span><span><small>Gastado</small><b>' + money(mt.exp, { d: 0 }) + '</b></span><span><small>Libre/día</small><b>' + money(s.per, { d: 0 }) + '</b></span></div>'
-    + (up.length ? '<div class="label">Próximos recibos</div>' + up.map(x => '<div class="upcoming-line"><time>' + fmtDate(x.next) + '</time><span><b>' + esc(x.name) + '</b></span><strong>' + money(-x.amount, { d: 0 }) + '</strong></div>').join('') : '') + '</section>'
+    + (up.length ? '<div class="label">Próximos recibos</div>' + up.map(x => '<div class="upcoming-line"><time>' + fmtDate(x.next) + '</time><span><b>' + esc(fmtMerchant(x.name)) + '</b><small>' + esc(fmtFreq(x.every)) + '</small></span><strong>' + money(-x.amount, { d: 0 }) + '</strong></div>').join('') : '') + '</section>'
     + (assets.length ? '<section class="panel"><div class="section-title"><h2>Activos en vivo</h2><button type="button" data-go="inversiones">Mercados</button></div>' + assets.slice(0, 5).map(x => '<button type="button" class="asset-line" data-asset="' + esc(x.asset) + '"><i style="background:' + assetColor(x.asset) + '">' + esc(x.asset.slice(0, 4)) + '</i><span><b>' + esc(state.assets[x.asset]?.name || x.asset) + '</b><small>' + nf(x.qty, x.qty < 1 ? 6 : 2, 0) + ' ' + esc(x.asset) + '</small></span><strong>' + money(x.eur, { d: 0 }) + '<small data-live-chg="' + esc(x.asset) + '" class="' + cls(state.prices[x.asset]?.chg) + '">' + (state.prices[x.asset]?.chg != null ? pct(state.prices[x.asset].chg) : '') + '</small></strong></button>').join('') + '</section>' : '')
     + (al.length ? '<section class="panel"><div class="section-title"><h2>Avisos (' + al.length + ')</h2><button type="button" data-go="copiloto">Preguntar IA</button></div>' + al.map(a => '<div class="decision-line"><b>' + esc(a.txt) + '</b><button type="button" data-dismiss="' + esc(a.id) + '" aria-label="Descartar">×</button></div>').join('') + '</section>' : '')
     + '<section class="panel"><div class="section-title"><h2>Últimos movimientos</h2><button type="button" data-go="movimientos">Ver todos</button></div>' + (last.map(txItem).join('') || compactEmpty('Sin movimientos', 'Importa tu extracto.')) + '</section>'
@@ -58,13 +62,13 @@ function vInvMobile() {
   let body = '';
   if (invView === 'derivs') {
     body = '<div class="kpi-strip">'
-      + '<div class="kpi-card"><small>PyG abierto</small><b class="' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true }) + '</b></div>'
+      + '<div class="kpi-card"><small>PyG abierto</small><b class="' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + '</b></div>'
       + '<div class="kpi-card"><small>Margen usado</small><b>' + money(ds.totalMarginEUR, { d: 0 }) + '</b></div>'
       + '<div class="kpi-card"><small>Exposición neta</small><b class="' + cls(ds.netExposureEUR) + '">' + money(ds.netExposureEUR, { sign: true, d: 0 }) + '</b></div>'
       + '<div class="kpi-card"><small>Menor dist. liq.</small><b class="' + (ds.minLiqDist != null && ds.minLiqDist < 12 ? 'down' : '') + '">' + (ds.minLiqDist != null ? nf(ds.minLiqDist, 1) + '\u00A0%' : '—') + '</b></div></div>'
       + '<section class="panel"><div class="module-title"><b>Posiciones abiertas (' + ders.length + ')</b></div>'
       + (ders.length ? '<div style="display:grid;gap:12px">' + ders.map(derivCardHTML).join('') + '</div>' : compactEmpty('Sin derivados abiertos', 'Añade uno manual o conecta KuCoin/Kraken Futures.', btn('+ Nuevo derivado', 'data-act="add-deriv"', 'primary small'))) + '</section>'
-      + '<section class="panel"><div class="module-title"><b>Simulador rápido</b></div><div class="seg" style="width:100%">' + [-20, -10, 10, 20].map(n => '<button style="flex:1" type="button" data-scenario="' + n + '" aria-pressed="' + (marketShock === n) + '">' + (n > 0 ? '+' : '') + n + '%</button>').join('') + '</div><div class="stat" style="margin-top:10px"><small>Impacto en cartera + derivados</small><b class="' + cls(total * marketShock / 100) + '">' + money((total + ds.netExposureEUR) * marketShock / 100, { sign: true, d: 0 }) + '</b></div></section>';
+      + '<section class="panel"><div class="module-title"><b>Simulador de cartera</b></div><div class="seg" style="width:100%">' + [-20, -10, 10, 20].map(n => '<button style="flex:1" type="button" class="' + (marketShock === n ? 'on' : '') + '" data-scenario="' + n + '" aria-pressed="' + (marketShock === n) + '">' + (n > 0 ? '+' : '') + n + '%</button>').join('') + '</div><div class="stat" style="margin-top:10px"><small>Impacto en cartera + derivados</small><b class="' + cls(total * marketShock / 100) + '">' + money((total + ds.netExposureEUR) * marketShock / 100, { sign: true, d: 0 }) + '</b></div></section>';
   } else if (invView === 'activos') {
     body = '<section class="panel"><div class="position-eyebrow">Cartera Spot</div><div class="position-value">' + moneyBig(total) + '</div><div class="position-status"><b class="' + cls(day) + '">' + money(day, { sign: true, d: 0 }) + '</b><span>hoy</span>' + (coverage >= 80 ? '<b class="' + cls(gain) + '">' + money(gain, { sign: true, d: 0 }) + '</b><span>FIFO</span>' : '') + '</div></section>'
       + '<section class="panel"><div class="module-title"><b>Posiciones (' + list.length + ')</b></div>' + (list.length ? list.map(holdingRow).join('') : compactEmpty('Cartera vacía', 'Importa CSV o conecta un exchange.', btn('Importar', 'data-act="import"', 'small'))) + '</section>'

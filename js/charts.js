@@ -8,29 +8,31 @@ let activeAccId = '', activeChatId = '', taxBusy = false, taxExtra = 0, m721 = n
 
 const CHARTS = {};
 const narrow = () => innerWidth < 1024;
-const RANGES = [['1S', 8], ['1M', 31], ['6M', 183], ['1A', 366], ['Máx', 3650]];
+const RANGES = [['1S', 7], ['1M', 30], ['6M', 180], ['1A', 365], ['Máx', 3650]];
 const rangeDays = () => (RANGES.find(r => r[0] === range) || RANGES[2])[1];
-const RANGE_TXT = { '1S': 'esta semana', '1M': 'en un mes', '6M': 'en 6 meses', '1A': 'en un año', 'Máx': 'desde el principio' };
+const RANGE_TXT = { '1S': 'esta semana', '1M': 'en 30 días', '6M': 'en 6 meses', '1A': 'en un año', 'Máx': 'desde el principio' };
 function rangeBtns() { return '<div class="ranges" role="group" aria-label="Periodo">' + RANGES.map(([r]) => '<button type="button" data-range="' + r + '" aria-pressed="' + (range === r) + '">' + r + '</button>').join('') + '</div>'; }
 
 function svgLine(pts, { h, w, id = 'nw', col, axis = true } = {}) {
   w = w || (narrow() ? 360 : 720); h = h || (narrow() ? 130 : 185);
-  if (!pts || pts.length < 2) return '<div class="empty-compact" style="padding:18px 8px"><b>Histórico en construcción</b><span>La evolución diaria aparecerá conforme se acumulen jornadas o velas de mercado.</span></div>';
-  const ys = pts.map(p => p[1]), min = Math.min(...ys), max = Math.max(...ys), pad = (max - min) * 0.12 || Math.abs(max) * 0.04 || 1, lo = min - pad, hi = max + pad;
+  if (!pts || pts.length < 2) return '<div class="empty-compact"><b>Histórico en construcción</b><span>La evolución diaria aparecerá conforme se acumulen jornadas o velas de mercado.</span></div>';
+  const ys = pts.map(p => p[1]), min = Math.min(...ys), max = Math.max(...ys);
+  const spanY = max - min, ref = Math.max(Math.abs(max), Math.abs(min), 1), pad = Math.max(spanY * 0.22, ref * 0.03, 15), lo = min - pad, hi = max + pad;
   const ts = pts.map(p => Date.parse(String(p[0]).slice(0, 10) + 'T12:00:00')), t0 = ts[0], t1 = ts.at(-1), span = t1 - t0;
   const X = i => span > 0 ? ((ts[i] - t0) / span) * w : (i / (pts.length - 1) * w), Yv = v => h - (v - lo) / (hi - lo) * h;
   const d = pts.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yv(p[1]).toFixed(1)).join(' ');
-  col = col || (pts.at(-1)[1] >= pts[0][1] ? 'var(--up)' : 'var(--down)');
+  col = col || (Math.abs(pts.at(-1)[1] - pts[0][1]) / ref < 0.005 ? 'var(--brand)' : pts.at(-1)[1] >= pts[0][1] ? 'var(--up)' : 'var(--down)');
   CHARTS[id] = { type: 'line', pts, ts, t0, span, X, Yv, w, h };
   const grid = [0.25, 0.5, 0.75].map(f => '<line x1="0" x2="' + w + '" y1="' + (h * f).toFixed(1) + '" y2="' + (h * f).toFixed(1) + '" stroke="var(--line)" stroke-dasharray="2 4"/>').join('');
   const midDate = span > 0 ? localDate(new Date((t0 + t1) / 2)) : pts[Math.floor(pts.length / 2)][0];
+  const scaleTicks = '<span class="chart-tick top money num">' + nf(hi, 0) + ' €</span><span class="chart-tick bot money num">' + nf(lo, 0) + ' €</span>';
   return '<div class="ichart" data-chart="' + id + '"><svg viewBox="0 0 ' + w + ' ' + (h + 4) + '" preserveAspectRatio="none" role="img" aria-label="Evolución" style="height:' + h + 'px">'
-    + '<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".22"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>'
+    + '<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".18"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>'
     + grid
     + '<path d="' + d + ' L' + w + ' ' + (h + 4) + ' L0 ' + (h + 4) + 'Z" fill="url(#g' + id + ')"/>'
     + '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
     + '<line class="cur" x1="0" x2="0" y1="0" y2="' + h + '" stroke="var(--ink3)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" visibility="hidden"/>'
-    + '</svg><span class="cdot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:' + col + ';border:2px solid var(--panel);transform:translate(-50%,-50%);left:100%;top:' + (Yv(pts.at(-1)[1]) / (h + 4) * 100).toFixed(2) + '%;pointer-events:none"></span><div class="tip" hidden></div></div>'
+    + '</svg>' + scaleTicks + '<span class="cdot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:' + col + ';border:2px solid var(--panel);transform:translate(-50%,-50%);left:100%;top:' + (Yv(pts.at(-1)[1]) / (h + 4) * 100).toFixed(2) + '%;pointer-events:none"></span><div class="tip" hidden></div></div>'
     + (axis ? '<div class="axis"><span>' + fmtDate(pts[0][0], { day: 'numeric', month: 'short' }) + '</span><span>' + fmtDate(midDate, { day: 'numeric', month: 'short' }) + '</span><span>' + fmtDate(pts.at(-1)[0], { day: 'numeric', month: 'short' }) + '</span></div>' : '');
 }
 
@@ -39,8 +41,10 @@ function svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', showSma = true }
   if (!candles || candles.length < 5) return '<div class="empty"><b>Sin velas para ' + esc(sym) + '</b><p class="note">Pulsa actualizar o revisa su ticker en Ajustar activo.</p></div>';
   const div = (state.settings.show === 'EUR' && isCryptoish(sym)) ? (fx('USD') || 1.08) : 1;
   const unit = state.settings.show === 'EUR' ? '€' : '$';
-  const scaled = div === 1 ? candles : candles.map(c => [c[0], c[1] / div, c[2] / div, c[3] / div, c[4] / div, c[5]]);
-  const n = scaled.length, axisW = narrow() ? 56 : 72, plotW = w - axisW, priceH = h * 0.78, volTop = h * 0.82, volH = h * 0.18;
+  const allScaled = div === 1 ? candles : candles.map(c => [c[0], c[1] / div, c[2] / div, c[3] / div, c[4] / div, c[5]]);
+  const visN = allScaled.length > 75 ? 65 : allScaled.length, off = allScaled.length - visN;
+  const scaled = allScaled.slice(off);
+  const n = scaled.length, axisW = narrow() ? 58 : 74, plotW = w - axisW, priceH = h * 0.78, volTop = h * 0.82, volH = h * 0.18;
   const highs = scaled.map(c => c[2]), lows = scaled.map(c => c[3]), vols = scaled.map(c => c[5] || 0);
   const liveNow = (state.settings.show === 'EUR' ? priceEUR(sym) : (state.prices[sym]?.usd || priceEUR(sym) * (fx('USD') || 1.08))) || 0;
   const allHi = liveNow ? Math.max(...highs, liveNow) : Math.max(...highs), allLo = liveNow ? Math.min(...lows, liveNow) : Math.min(...lows);
@@ -49,26 +53,28 @@ function svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', showSma = true }
   const bw = plotW / n, X = i => (i + 0.5) * bw, Yv = p => priceH - (p - lo) / (hi - lo) * priceH;
 
   const ly = (liveNow && liveNow >= lo && liveNow <= hi) ? Yv(liveNow) : null;
-  const gridLines = [0.1, 0.37, 0.64, 0.9].map(f => {
+  const gridLines = [0.12, 0.31, 0.50, 0.69, 0.88].map(f => {
     const y = (priceH * f).toFixed(1), valP = hi - (hi - lo) * f;
-    const hideTxt = ly != null && Math.abs(Number(y) - ly) < 16;
+    const hideTxt = ly != null && Math.abs(Number(y) - ly) < 14;
     return '<line x1="0" x2="' + plotW + '" y1="' + y + '" y2="' + y + '" stroke="var(--line)" stroke-dasharray="2 4"/>'
-      + (hideTxt ? '' : '<text x="' + (w - 2) + '" y="' + (Number(y) + 3) + '" text-anchor="end" style="font-size:10px">' + nf(valP, valP < 10 ? 4 : 0) + ' ' + unit + '</text>');
+      + (hideTxt ? '' : '<text x="' + (w - 3) + '" y="' + (Number(y) + 3.5) + '" text-anchor="end" style="font-size:10px;fill:var(--ink3)">' + nf(valP, valP < 10 ? 4 : 0) + ' ' + unit + '</text>');
   }).join('');
   const liveLine = ly != null
-    ? '<line x1="0" x2="' + plotW + '" y1="' + ly.toFixed(1) + '" y2="' + ly.toFixed(1) + '" stroke="var(--brand)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/>'
-      + '<rect x="' + (plotW + 3) + '" y="' + (ly - 8).toFixed(1) + '" width="' + (axisW - 4) + '" height="16" rx="4" fill="var(--brand)"/>'
-      + '<text x="' + (w - 3) + '" y="' + (ly + 3.5).toFixed(1) + '" text-anchor="end" fill="#fff" style="font-size:9.5px;font-weight:700">' + nf(liveNow, liveNow < 10 ? 4 : 0) + ' ' + unit + '</text>'
+    ? '<line x1="0" x2="' + plotW + '" y1="' + ly.toFixed(1) + '" y2="' + ly.toFixed(1) + '" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 3" opacity="0.85"/>'
+      + '<rect x="' + (plotW + 2) + '" y="' + (ly - 8.5).toFixed(1) + '" width="' + (axisW - 3) + '" height="17" rx="4" fill="#1d4ed8" stroke="#60a5fa" stroke-width="0.8"/>'
+      + '<text x="' + (w - 4) + '" y="' + (ly + 3.5).toFixed(1) + '" text-anchor="end" style="font-size:9.8px;font-weight:750;fill:#ffffff">' + nf(liveNow, liveNow < 10 ? 4 : 0) + ' ' + unit + '</text>'
     : '';
 
   const smaPath = period => {
-    if (n < period) return '';
+    if (allScaled.length < period) return '';
     const pts = [];
-    for (let i = period - 1; i < n; i++) {
-      let s = 0; for (let j = i - period + 1; j <= i; j++) s += scaled[j][4];
+    for (let i = 0; i < n; i++) {
+      const gi = off + i;
+      if (gi < period - 1) continue;
+      let s = 0; for (let j = gi - period + 1; j <= gi; j++) s += allScaled[j][4];
       pts.push((pts.length ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yv(s / period).toFixed(1));
     }
-    return pts.join(' ');
+    return pts.length >= 2 ? pts.join(' ') : '';
   };
 
   let shapes = '';
@@ -82,6 +88,7 @@ function svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', showSma = true }
     shapes += '<rect x="' + (x - cw / 2).toFixed(1) + '" y="' + (volTop + volH - vh).toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + Math.max(1, vh).toFixed(1) + '" fill="' + col + '" opacity="0.32"/>';
   }
   const s20 = showSma ? smaPath(20) : '', s50 = showSma ? smaPath(50) : '';
+  const s50Lbl = !s50 ? 'SMA 50 (pocos datos)' : off < 49 ? 'SMA 50 (desde vela 50)' : 'SMA 50';
   CHARTS[id] = { type: 'candles', candles: scaled, unit, plotW, X, Yv, bw, w, h, sym };
 
   const last = scaled.at(-1), mid = scaled[Math.floor(n / 2)], first = scaled[0], dDec = last[4] < 10 ? 4 : 2;
@@ -89,26 +96,34 @@ function svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', showSma = true }
   return '<div class="ohlc-bar" id="ohlc-readout-' + id + '"><span>' + fmtDate(new Date(last[0]).toISOString().slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }) + '</span><span>O <b>' + nf(last[1], dDec) + ' ' + unit + '</b></span><span>H <b>' + nf(last[2], dDec) + ' ' + unit + '</b></span><span>L <b>' + nf(last[3], dDec) + ' ' + unit + '</b></span><span>C <b class="' + (last[4] >= last[1] ? 'up' : 'down') + '">' + nf(last[4], dDec) + ' ' + unit + '</b></span></div>'
     + '<div class="ichart" data-chart="' + id + '"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" role="img" aria-label="Velas OHLCV" style="height:' + h + 'px">'
     + gridLines + liveLine + shapes
-    + (s20 ? '<path d="' + s20 + '" fill="none" stroke="var(--c1)" stroke-width="1.4" opacity="0.9"/>' : '')
-    + (s50 ? '<path d="' + s50 + '" fill="none" stroke="var(--c5)" stroke-width="1.4" opacity="0.9"/>' : '')
+    + (s20 ? '<path d="' + s20 + '" fill="none" stroke="var(--c1)" stroke-width="1.8" opacity="0.95"/>' : '')
+    + (s50 ? '<path d="' + s50 + '" fill="none" stroke="var(--c5)" stroke-width="1.8" opacity="0.95"/>' : '')
     + '<line class="cur" x1="0" x2="0" y1="0" y2="' + h + '" stroke="var(--ink3)" stroke-dasharray="3 3" visibility="hidden"/>'
     + '</svg><div class="tip" hidden></div></div>'
     + '<div class="axis" style="padding-right:' + axisW + 'px"><span>' + fd(first[0]) + '</span><span>' + fd(mid[0]) + '</span><span>' + fd(last[0]) + '</span></div>'
-    + '<div class="legend"><span><i style="background:var(--c1)"></i>SMA 20</span><span><i style="background:var(--c5)"></i>SMA 50</span><span class="faint">Volumen inferior</span></div>';
+    + '<div class="legend"><span><i style="background:var(--c1)"></i>SMA 20</span><span><i style="background:var(--c5)"></i>' + s50Lbl + '</span><span class="faint">Volumen inferior</span></div>';
 }
 
 function svgCompare(m) {
   const pm = monthAdd(m, -1), t = today(), n = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), pn = new Date(+pm.slice(0, 4), +pm.slice(5, 7), 0).getDate();
   const cum = (mm, len, until) => { const ds = dailySpend(mm), out = []; let s = 0; for (let d = 1; d <= len; d++) { const k = mm + '-' + String(d).padStart(2, '0'); if (until && k > until) break; s += ds[k] || 0; out.push(s); } return out; };
-  const a = cum(m, n, t), b = cum(pm, pn), N = Math.max(n, pn), w = narrow() ? 360 : 420, h = narrow() ? 105 : 115, max = Math.max(1, ...a, ...b) * 1.08;
-  const X = i => i / (N - 1) * w, Y = v => h - v / max * h, P = arr => arr.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
+  const a = cum(m, n, t), b = cum(pm, pn), hasB = b.some(v => v > 0), N = Math.max(n, pn), w = narrow() ? 360 : 420, h = narrow() ? 72 : 78;
+  const rawMax = Math.max(1, ...a, ...(hasB ? b : [0])), max = rawMax * 1.1;
+  const padT = 6, padB = 5, plotH = h - padT - padB;
+  const X = i => i / (N - 1) * w, Y = v => padT + plotH - (v / max) * plotH, P = arr => arr.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
   CHARTS.cmp = { type: 'cmp', a, b, X, w, N, m, pm };
-  return '<div class="ichart" data-chart="cmp"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Gasto acumulado">'
-    + (b.length ? '<path d="' + P(b) + '" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' : '')
-    + (a.length ? '<path d="' + P(a) + ' L' + X(a.length - 1) + ' ' + h + ' L0 ' + h + 'Z" fill="var(--brand-soft)"/><path d="' + P(a) + '" fill="none" stroke="var(--brand)" stroke-width="2.3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' : '')
+  const baseY = (padT + plotH).toFixed(1), midY = (padT + plotH * 0.5).toFixed(1);
+  const cmpMeta = (hasB && b.at(-1) > 0) ? pct(((a.at(-1) || 0) - b.at(-1)) / b.at(-1) * 100, 0) + ' vs. ' + MONTHS[+pm.slice(5) - 1] : 'Día 1–' + Math.max(1, a.length);
+  return '<div class="cmp-wrap">'
+    + '<div class="cmp-head"><span>Acumulado diario (' + MONTHS[+m.slice(5) - 1] + (hasB ? ' vs. ' + MONTHS[+pm.slice(5) - 1] : '') + ')</span><span class="faint num">' + cmpMeta + '</span></div>'
+    + '<div class="ichart" data-chart="cmp"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Gasto acumulado">'
+    + '<line x1="0" x2="' + w + '" y1="' + midY + '" y2="' + midY + '" stroke="var(--line)" stroke-dasharray="2 4"/>'
+    + '<line x1="0" x2="' + w + '" y1="' + baseY + '" y2="' + baseY + '" stroke="var(--line)"/>'
+    + (hasB ? '<path d="' + P(b) + '" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' : '')
+    + (a.length ? '<path d="' + P(a) + ' L' + X(a.length - 1).toFixed(1) + ' ' + baseY + ' L0 ' + baseY + 'Z" fill="var(--brand-soft)"/><path d="' + P(a) + '" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' : '')
     + '<line class="cur" x1="0" x2="0" y1="0" y2="' + h + '" stroke="var(--ink3)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" visibility="hidden"/>'
-    + '</svg><div class="tip" hidden></div></div><div class="axis"><span>1</span><span>' + Math.round(N / 2) + '</span><span>' + N + '</span></div>'
-    + '<div class="legend" style="margin-top:6px"><span><i style="background:var(--brand)"></i>' + MONTHS[+m.slice(5) - 1] + '</span><span><i style="background:var(--ink3)"></i>' + MONTHS[+pm.slice(5) - 1] + '</span></div>';
+    + '</svg><div class="tip" hidden></div></div>'
+    + '<div class="axis"><span>Día 1</span><span>Día ' + Math.round(N / 2) + '</span><span>Día ' + N + '</span></div></div>';
 }
 
 function svgDays(m) {

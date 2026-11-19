@@ -59,8 +59,8 @@ function renderNav() {
   if ($('nav-drawer')) $('nav-drawer').innerHTML = drawerNav();
   $('nav-tabs').innerHTML = TABS.map(([id, n, i]) => '<button type="button" data-go="' + id + '"' + (view === id ? ' aria-current="page"' : '') + '>' + ico(i) + n + '</button>').join('');
   const dark = document.documentElement.dataset.theme !== 'light', hid = !!state.settings.hide;
-  for (const id of ['theme-side', 'theme-top']) if ($(id)) $(id).innerHTML = ico(dark ? 'sun' : 'moon');
-  for (const id of ['hide-side', 'hide-top']) if ($(id)) $(id).innerHTML = ico(hid ? 'eyeoff' : 'eye');
+  for (const id of ['theme-side', 'theme-top', 'theme-top-desktop']) if ($(id)) $(id).innerHTML = ico(dark ? 'sun' : 'moon');
+  for (const id of ['hide-side', 'hide-top', 'hide-top-desktop']) if ($(id)) $(id).innerHTML = ico(hid ? 'eyeoff' : 'eye');
   if ($('ver-side')) $('ver-side').textContent = APP_NAME + ' ' + APP_VERSION;
   if ($('ver-badge')) $('ver-badge').textContent = APP_VERSION;
   if ($('ver-drawer')) $('ver-drawer').textContent = APP_VERSION;
@@ -71,7 +71,7 @@ function renderNav() {
 function render() {
   const th = state.settings.theme === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : state.settings.theme;
   document.documentElement.dataset.theme = th;
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', th === 'light' ? '#f2f5f9' : '#080b10');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', th === 'light' ? '#f5f6f8' : '#090a0d');
   document.body.classList.toggle('hide-amounts', !!state.settings.hide);
   document.body.dataset.view = view;
   renderNav();
@@ -340,7 +340,7 @@ async function act(a, el) {
     case 'ai-drawer-toggle': toggleAIDrawer(); break;
     case 'ai-drawer-close': toggleAIDrawer(false); break;
     case 'cmd-open': openCommandPalette(); break;
-    case 'connect-hub': openConnectHub(); break;
+    case 'connect-hub': openConnectHub(el.dataset.tab); break;
     case 'bank-connect': await openBankConnectModal(); break;
     case 'install': await installApp(); break;
     case 'repair-pwa': await repairPWA(); break;

@@ -129,9 +129,9 @@ async function loadOHLCV(sym, interval = chartInterval, force = false) {
   let res = null;
   try {
     if (state.settings.worker) {
-      res = await api('/ohlcv?symbol=' + encodeURIComponent(sym) + '&interval=' + encodeURIComponent(interval) + '&limit=100&yahoo=' + encodeURIComponent(state.assets[sym]?.yahoo || ''));
+      res = await api('/ohlcv?symbol=' + encodeURIComponent(sym) + '&interval=' + encodeURIComponent(interval) + '&limit=180&yahoo=' + encodeURIComponent(state.assets[sym]?.yahoo || ''));
     } else if (isCryptoish(sym) && !STABLE.includes(sym)) {
-      const r = await fetch('https://data-api.binance.vision/api/v3/klines?symbol=' + sym + 'USDT&interval=' + interval + '&limit=100');
+      const r = await fetch('https://data-api.binance.vision/api/v3/klines?symbol=' + sym + 'USDT&interval=' + interval + '&limit=180');
       if (r.ok) { const arr = await r.json(); res = { source: 'Binance', interval, candles: arr.map(x => [x[0], +x[1], +x[2], +x[3], +x[4], +x[5]]) }; }
     }
     if (res && res.candles?.length) {

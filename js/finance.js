@@ -43,15 +43,29 @@ function merchantOf(desc) {
   if ((m = d.match(/^TRANSFERENCIA (?:DE|A FAVOR DE) (.+?)(?:, CONCEPTO|,|$)/))) return m[1].trim();
   return d.split(/[,*]/)[0].slice(0, 40).trim();
 }
+function fmtMerchant(s) {
+  return String(s || '').toLowerCase().replace(/(^|[\s/-])\S/g, c => c.toUpperCase());
+}
+function fmtFreq(days) {
+  const d = +days || 30;
+  if (d >= 27 && d <= 32) return 'Mensual';
+  if (d >= 6 && d <= 8) return 'Semanal';
+  if (d >= 13 && d <= 16) return 'Quincenal';
+  if (d >= 85 && d <= 95) return 'Trimestral';
+  if (d >= 360 && d <= 370) return 'Anual';
+  return 'Cada ' + d + ' días';
+}
+const INIT_ADJUST_RE = /(?:AJUSTE|SALDO)\s+INICIAL|APERTURA\s+DE\s+CUENTA|REGULARIZACI[OÓ]N\s+INICIAL/i;
 function categorize(t) {
   const d = String(t.desc || '').toUpperCase(), mer = merchantOf(t.desc);
+  if (INIT_ADJUST_RE.test(d)) return 'interno';
   for (const r of state.rules) if (r.match && (mer === r.match || d.includes(r.match))) return r.cat;
   if (/INGRESO EN CAJERO|INGRESO EN EFECTIVO/.test(d)) return 'ingresos';
   for (const [re, c] of RULES_BASE) if (re.test(d)) { if (c === 'inversion' || c === 'interno' || (catById(c).kind === 'expense' && t.amount < 0) || (catById(c).kind === 'income' && t.amount > 0)) return c; }
   if (/^TRANSFERENCIA DE/.test(d)) return 'ingresos';
   return t.amount > 0 ? 'ingresos' : 'otros';
 }
-const isInternal = t => catById(t.cat).kind === 'internal';
+const isInternal = t => catById(t.cat).kind === 'internal' || INIT_ADJUST_RE.test(String(t?.desc || ''));
 
 // ===== Activos, divisas y normalización =====
 const FIAT = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'TRY', 'BRL', 'ARS', 'MXN', 'PLN', 'SEK', 'NOK', 'DKK'];
@@ -158,10 +172,12 @@ function derivSummary() {
   const rows = derivRows();
   const totalPnlEUR = sum(rows.map(d => d.pnlEUR));
   const totalMarginEUR = sum(rows.map(d => d.marginEUR));
+  const equityEUR = totalMarginEUR + totalPnlEUR;
+  const manualEquityEUR = sum(rows.filter(d => !d.inBalance).map(d => (+d.marginEUR || 0) + d.pnlEUR));
   const grossNotionalEUR = sum(rows.map(d => d.notionalEUR));
   const netExposureEUR = sum(rows.map(d => d.notionalEUR * (d.side === 'short' ? -1 : 1)));
   const dists = rows.map(d => d.liqDistPct).filter(x => x != null && isFinite(x));
-  return { count: rows.length, totalPnlEUR, totalMarginEUR, grossNotionalEUR, netExposureEUR, minLiqDist: dists.length ? Math.min(...dists) : null, atRiskCount: rows.filter(d => d.riskLevel === 'danger' || d.riskLevel === 'warn').length };
+  return { count: rows.length, totalPnlEUR, totalMarginEUR, equityEUR, manualEquityEUR, grossNotionalEUR, netExposureEUR, minLiqDist: dists.length ? Math.min(...dists) : null, atRiskCount: rows.filter(d => d.riskLevel === 'danger' || d.riskLevel === 'warn').length };
 }
 
 function netWorth() {
@@ -215,8 +231,9 @@ function reliableHistory(points) {
 function netSeries(days) {
   const since = addDays(today(), -days), snapDates = Object.keys(state.snaps).sort(), nw = netWorth();
   if (snapDates.length >= 2) {
+    const inWin = snapDates.filter(d => d >= since);
     const anchor = snapDates.filter(d => d < since).at(-1);
-    const dates = [...(anchor ? [anchor] : []), ...snapDates.filter(d => d >= since)];
+    const dates = inWin.length >= 2 ? inWin : [...(anchor ? [anchor] : []), ...inWin];
     const pts = dates.map(d => [d, +state.snaps[d].total || 0]);
     return { pts: reliableHistory(pts), src: 'snap' };
   }
@@ -268,9 +285,10 @@ function invSeries(days) {
 }
 
 // ===== Flujo mensual, previsiones y alertas =====
-function monthTotals(m) {
+function monthTotals(m = monthKey(today())) {
   const t = state.tx.filter(x => monthKey(x.date) === m && !isInternal(x));
-  const inc = sum(t.filter(x => x.amount > 0).map(x => x.amount)), exp = -sum(t.filter(x => x.amount < 0).map(x => x.amount));
+  const inc = sum(t.filter(x => x.amount > 0 && catById(x.cat).kind === 'income').map(x => x.amount));
+  const exp = -sum(t.filter(x => x.amount < 0).map(x => x.amount));
   const byCat = {}; for (const x of t) if (x.amount < 0) byCat[x.cat] = (byCat[x.cat] || 0) - x.amount;
   return { inc, exp, save: inc - exp, rate: inc ? (inc - exp) / inc * 100 : null, byCat, n: t.length };
 }

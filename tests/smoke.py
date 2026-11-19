@@ -101,6 +101,11 @@ async def browser_checks():
         await pg.set_input_files('#file-in', str(ROOT / 'tests' / 'santander_ejemplo.xlsx')); await pg.wait_for_timeout(500)
         await ev("$('imp-ok').click()"); await pg.wait_for_timeout(300)
         ok('Reimportar no duplica') if await ev("state.tx.length") == 40 else fail('Al reimportar se duplican movimientos')
+        await ev("go('resumen')"); await pg.wait_for_timeout(150)
+        r_bal = await ev("({save: monthTotals().save, txt: document.body.innerText})")
+        ok('Balance mensual visible en Inicio') if abs(r_bal['save']) < 0.01 or 'Balance\n0 €' not in r_bal['txt'].replace(' ', ' ') else fail('Balance mensual erróneo (0 €)')
+        inc_ok = await ev("(()=>{const m=monthKey(today()),b=monthTotals(m).inc;state.tx.push({id:'t_adj',acc:state.accounts[0].id,date:today(),desc:'AJUSTE INICIAL',amount:500,cat:'otros'});const a=monthTotals(m).inc;state.tx.pop();return Math.abs(a-b)<0.01})()")
+        ok('Ajuste inicial positivo no infla ingresos del mes') if inc_ok else fail('Ajuste inicial infló monthTotals().inc')
         check('Santander')
 
         print('4. Reglas aprendidas')

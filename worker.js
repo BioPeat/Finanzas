@@ -515,6 +515,96 @@ function cors(req, env, revealError = false) {
   return { 'Access-Control-Allow-Origin': exposed, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS', 'Access-Control-Allow-Headers': 'X-Caudal-Token,Content-Type', 'Access-Control-Max-Age': '86400', 'Cache-Control': 'no-store' };
 }
 
+const VAULT_ALLOWLIST = [
+  'KUCOIN_KEY', 'KUCOIN_SECRET', 'KUCOIN_PASSPHRASE',
+  'KUCOIN_FUTURES_KEY', 'KUCOIN_FUTURES_SECRET', 'KUCOIN_FUTURES_PASSPHRASE',
+  'KRAKEN_KEY', 'KRAKEN_SECRET',
+  'KRAKEN_FUTURES_KEY', 'KRAKEN_FUTURES_SECRET',
+  'OKX_KEY', 'OKX_SECRET', 'OKX_PASSPHRASE',
+  'BINANCE_KEY', 'BINANCE_SECRET',
+  'BYBIT_KEY', 'BYBIT_SECRET',
+  'ENABLE_BANKING_APP_ID', 'ENABLE_BANKING_PRIVATE_KEY',
+  'GEMINI_API_KEY'
+];
+
+const PROVIDER_KEYS = {
+  eb: ['ENABLE_BANKING_APP_ID', 'ENABLE_BANKING_PRIVATE_KEY'],
+  kucoin: EXCHANGES.kucoin.keys,
+  kraken: EXCHANGES.kraken.keys,
+  kraken_futures: EXCHANGES.kraken_futures.keys,
+  okx: EXCHANGES.okx.keys,
+  binance: EXCHANGES.binance.keys,
+  bybit: EXCHANGES.bybit.keys
+};
+
+async function safeEq(a, b) {
+  const sa = String(a || ''), sb = String(b || '');
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(sa)),
+    crypto.subtle.digest('SHA-256', enc.encode(sb))
+  ]);
+  const ua = new Uint8Array(ha), ub = new Uint8Array(hb);
+  let diff = sa.length ^ sb.length;
+  for (let i = 0; i < ua.length; i++) diff |= ua[i] ^ ub[i];
+  return diff === 0;
+}
+
+async function vaultKey(env) {
+  const raw = await crypto.subtle.digest('SHA-256', enc.encode('caudal-vault-v1:' + String(env.TOKEN || '')));
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function writeVault(env, obj) {
+  const k = await vaultKey(env);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, enc.encode(JSON.stringify(obj || {})));
+  await env.CAUDAL.put('vault:credentials', JSON.stringify({ v: 1, iv: b64(iv), ct: b64(ct) }));
+}
+
+async function readVault(env) {
+  if (!env.CAUDAL) return { data: {}, locked: false };
+  let stored = null;
+  try {
+    stored = await env.CAUDAL.get('vault:credentials', 'json');
+  } catch (e) {
+    return { data: {}, locked: false };
+  }
+  if (!stored || typeof stored !== 'object') return { data: {}, locked: false };
+  if (stored.v === 1 && typeof stored.iv === 'string' && typeof stored.ct === 'string') {
+    try {
+      const k = await vaultKey(env);
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(stored.iv) }, k, unb64(stored.ct));
+      const dec = JSON.parse(new TextDecoder().decode(pt));
+      return { data: (dec && typeof dec === 'object') ? dec : {}, locked: false };
+    } catch (e) {
+      return { data: {}, locked: true };
+    }
+  }
+  const clean = Object.fromEntries(Object.entries(stored).filter(([k, v]) => VAULT_ALLOWLIST.includes(k) && typeof v === 'string' && v.trim()));
+  try { await writeVault(env, clean); } catch (e) { }
+  return { data: clean, locked: false };
+}
+
+async function withVault(env) {
+  const { data: vault, locked } = await readVault(env);
+  const fromVault = {};
+  for (const [k, v] of Object.entries(vault)) {
+    if (typeof v === 'string' && v.trim() && !(typeof env[k] === 'string' && env[k].trim())) {
+      fromVault[k] = v.trim();
+    }
+  }
+  return { ...env, ...fromVault, __vaultLocked: !!locked };
+}
+
+function credentialSources(rawEnv, effEnv) {
+  const hasVal = (o, k) => typeof o[k] === 'string' && o[k].trim().length > 0;
+  return Object.fromEntries(Object.entries(PROVIDER_KEYS).map(([p, keys]) => {
+    if (!keys.every(k => hasVal(effEnv, k))) return [p, null];
+    if (keys.every(k => hasVal(rawEnv, k))) return [p, 'env'];
+    return [p, 'vault'];
+  }));
+}
+
 export default {
   async fetch(req, env) {
     const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowed = String(env.ALLOWED_ORIGIN || '').replace(/\/$/, '');
@@ -526,22 +616,60 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: H });
     const url = new URL(req.url);
     if (!env.TOKEN || String(env.TOKEN).length < 20) return respond({ error: 'Falta TOKEN o es demasiado corto (mínimo 20 caracteres).' }, 500);
-    if (req.headers.get('X-Caudal-Token') !== env.TOKEN) return respond({ error: 'Código incorrecto' }, 401);
+    const tok = req.headers.get('X-Caudal-Token') || '';
+    if (!(await safeEq(tok, env.TOKEN))) {
+      return respond({ error: 'TOKEN no coincide. En Ajustes → Vincular otro dispositivo abre el enlace desde tu sesión principal o introduce el TOKEN configurado en Cloudflare.' }, 401);
+    }
+    const effEnv = await withVault(env);
     try {
-      if (url.pathname === '/ping') {
+      if (url.pathname === '/ping' || (url.pathname === '/credentials' && req.method === 'GET')) {
         return respond({
-          ok: true, version: W_VERSION, kv: !!env.CAUDAL, originProtected: !!allowed, ai: aiProviders(env),
-          rollingBackups: !!env.CAUDAL, openBanking: !!(env.ENABLE_BANKING_APP_ID && env.ENABLE_BANKING_PRIVATE_KEY),
-          onchain: true, ohlcv: true,
-          exchanges: Object.fromEntries(Object.entries(EXCHANGES).map(([k, x]) => [k, x.keys.every(n => env[n])]))
+          ok: true, version: W_VERSION, kv: !!effEnv.CAUDAL, originProtected: !!allowed, ai: aiProviders(effEnv),
+          rollingBackups: !!effEnv.CAUDAL, openBanking: !!(effEnv.ENABLE_BANKING_APP_ID && effEnv.ENABLE_BANKING_PRIVATE_KEY),
+          onchain: true, ohlcv: true, vaultLocked: !!effEnv.__vaultLocked,
+          credentialSources: credentialSources(env, effEnv),
+          exchanges: Object.fromEntries(Object.entries(EXCHANGES).map(([k, x]) => [k, x.keys.every(n => effEnv[n])]))
+        });
+      }
+      if (url.pathname === '/credentials' && req.method === 'POST') {
+        if (!effEnv.CAUDAL) return respond({ error: 'Falta enlazar el espacio KV como CAUDAL.' }, 500);
+        const allow = new Set(VAULT_ALLOWLIST);
+        const body = JSON.parse((await req.text()) || '{}');
+        const current = await readVault(env);
+        if (current.locked && !body.forceReset) {
+          return respond({ error: 'La bóveda cifrada requiere confirmación para sobrescribirse tras cambiar el TOKEN.', vaultLocked: true }, 409);
+        }
+        const vault = current.locked ? {} : { ...current.data };
+        if (body.set && typeof body.set === 'object') {
+          for (const [k, v] of Object.entries(body.set)) {
+            if (allow.has(k) && typeof v === 'string' && v.trim()) vault[k] = v.trim();
+          }
+        }
+        if (Array.isArray(body.clear)) {
+          for (const k of body.clear) {
+            if (allow.has(k)) delete vault[k];
+          }
+        } else if (body.clear && typeof body.clear === 'object') {
+          for (const [k, v] of Object.entries(body.clear)) {
+            if (v && allow.has(k)) delete vault[k];
+          }
+        }
+        await writeVault(env, vault);
+        const merged = await withVault(env);
+        return respond({
+          ok: true, version: W_VERSION, kv: !!merged.CAUDAL, originProtected: !!allowed, ai: aiProviders(merged),
+          rollingBackups: !!merged.CAUDAL, openBanking: !!(merged.ENABLE_BANKING_APP_ID && merged.ENABLE_BANKING_PRIVATE_KEY),
+          onchain: true, ohlcv: true, vaultLocked: !!merged.__vaultLocked,
+          credentialSources: credentialSources(env, merged),
+          exchanges: Object.fromEntries(Object.entries(EXCHANGES).map(([k, x]) => [k, x.keys.every(n => merged[n])]))
         });
       }
       if (url.pathname === '/balances') {
         const exchanges = {}, errors = {};
-        await Promise.all(Object.entries(EXCHANGES).filter(([, x]) => x.keys.every(n => env[n])).map(async ([k, x]) => { try { exchanges[k] = await x.fn(env); } catch (e) { errors[k] = e.message; } }));
+        await Promise.all(Object.entries(EXCHANGES).filter(([, x]) => x.keys.every(n => effEnv[n])).map(async ([k, x]) => { try { exchanges[k] = await x.fn(effEnv); } catch (e) { errors[k] = e.message; } }));
         return respond({ exchanges, errors, ts: Date.now() });
       }
-      if (url.pathname === '/history') return respond(await exchangeHistory(env, url.searchParams.get('exchange') || ''));
+      if (url.pathname === '/history') return respond(await exchangeHistory(effEnv, url.searchParams.get('exchange') || ''));
       if (url.pathname === '/prices') return respond(await prices(url));
       if (url.pathname === '/hist') return respond(await hist(url));
       if (url.pathname === '/series') return respond(await series(url));
@@ -550,17 +678,17 @@ export default {
       if (url.pathname === '/onchain') return respond(await onchain(url));
       if (url.pathname === '/bank/aspsps') {
         const c = (url.searchParams.get('country') || 'ES').toUpperCase();
-        return respond(await ebReq(env, '/aspsps?country=' + encodeURIComponent(c)));
+        return respond(await ebReq(effEnv, '/aspsps?country=' + encodeURIComponent(c)));
       }
       if (url.pathname === '/bank/auth' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
         const valid = new Date(Date.now() + 89 * 864e5).toISOString();
-        const r = await ebReq(env, '/auth', { method: 'POST', body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
+        const r = await ebReq(effEnv, '/auth', { method: 'POST', body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
         return respond(r);
       }
       if (url.pathname === '/bank/session' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
-        return respond(await ebReq(env, '/sessions', { method: 'POST', body: JSON.stringify({ code: b.code }) }));
+        return respond(await ebReq(effEnv, '/sessions', { method: 'POST', body: JSON.stringify({ code: b.code }) }));
       }
       if (url.pathname === '/bank/sync' && req.method === 'POST') {
         const b = JSON.parse(await req.text()), accounts = [], errors = [];
@@ -568,8 +696,8 @@ export default {
         for (const acc of b.accounts || []) {
           try {
             const [balRes, txRes] = await Promise.all([
-              ebReq(env, '/accounts/' + encodeURIComponent(acc.uid) + '/balances'),
-              ebReq(env, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + from)
+              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/balances'),
+              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + from)
             ]);
             const firstBal = (balRes.balances || [])[0];
             const bal = firstBal && firstBal.balance_amount ? +firstBal.balance_amount.amount : null;
@@ -588,7 +716,7 @@ export default {
       if (url.pathname === '/ai' && req.method === 'POST') {
         const raw = await req.text();
         if (raw.length > 4500000) return respond({ error: 'Solicitud demasiado grande' }, 413);
-        return respond(await askAI(env, JSON.parse(raw)));
+        return respond(await askAI(effEnv, JSON.parse(raw)));
       }
       const bm = url.pathname.match(/^\/backups\/([a-f0-9]{20,64})$/);
       if (bm) {

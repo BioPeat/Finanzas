@@ -8,6 +8,31 @@ function changeCell(days, label) {
   const c = changeWindow(days);
   return '<div class="change-cell"><small>' + label + '</small>' + (c ? '<b class="' + cls(c.value) + '">' + money(c.value, { sign: true, d: 0 }) + '</b><span class="' + cls(c.pct) + '">' + pct(c.pct) + '</span>' : '<b>Sin base</b><span>falta historial</span>') + '</div>';
 }
+function changeGridHTML(tag = 'div', attrs = '') {
+  const c1 = changeWindow(1), c7 = changeWindow(7), c30 = changeWindow(30), c180 = changeWindow(180);
+  const noShort = (!c1 || Math.abs(c1.value) < 0.05) && (!c7 || Math.abs(c7.value) < 0.05);
+  if (noShort) {
+    const second = range === '1M'
+      ? '<div class="change-cell"><small>Últimos 7 días</small><b>Sin variación</b><span>sin cambios netos</span></div>'
+      : changeCell(30, '30 días');
+    const first = range === '1M'
+      ? '<div class="change-cell"><small>Últimas 24 h</small><b>Sin variación</b><span>sin cambios netos</span></div>'
+      : '<div class="change-cell"><small>Últimos 7 días</small><b>Sin variación</b><span>sin cambios netos</span></div>';
+    return '<' + tag + ' class="change-grid cols-2"' + (attrs ? ' ' + attrs : '') + '>' + first + second + '</' + tag + '>';
+  }
+  const cell1 = changeCell(1, 'Patrimonio 24h');
+  const cell2 = range === '1S' ? changeCell(30, '30 días') : changeCell(7, '7 días');
+  let cell3 = '';
+  if (range !== '1M' && range !== '1S') cell3 = changeCell(30, '30 días');
+  else if (c180 && (!c30 || c180.from !== c30.from)) cell3 = changeCell(180, '6 meses');
+  else {
+    const inv = investmentSummary();
+    cell3 = inv.cost > 0
+      ? '<div class="change-cell"><small>Plusvalía FIFO</small><b class="' + cls(inv.gain) + '">' + money(inv.gain, { sign: true, d: 0 }) + '</b><span class="' + cls(inv.pct || 0) + '">' + (inv.pct != null ? pct(inv.pct) : 'coste base') + '</span></div>'
+      : changeCell(180, '6 meses');
+  }
+  return '<' + tag + ' class="change-grid"' + (attrs ? ' ' + attrs : '') + '>' + cell1 + cell2 + cell3 + '</' + tag + '>';
+}
 function accountLine(a, rows) {
   const v = accValue(a, rows), auto = !!(state.apiBal[a.id] || a.ebUid), kind = KIND_NAMES[a.kind] || 'Cuenta', ik = instKey(a);
   const badge = { santander: 'SAN', revolut: 'REV', kucoin: 'KC', kraken: 'KRK', binance: 'BNB' }[ik] || ico(KIND_ICON[a.kind] || 'wallet');
@@ -18,12 +43,13 @@ function homeAssets(rows) {
   return Object.values(by).filter(x => Math.abs(x.eur) >= .5 || !priceEUR(x.asset)).sort((a, b) => b.eur - a.eur);
 }
 function txItem(t) {
-  const c = catById(t.cat), incoming = t.amount > 0, mer = merchantOf(t.desc);
-  return '<button class="item" type="button" data-tx="' + t.id + '"><span class="av" style="background:var(' + c.color + ')">' + esc(initials(mer)) + '</span><b>' + esc(mer.toLowerCase().replace(/(^|\s)\S/g, x => x.toUpperCase())) + '</b><span class="amt ' + (incoming ? 'up' : '') + '">' + money(t.amount, { sign: true }) + '</span><small>' + esc(c.name) + (state.accounts.filter(a => a.kind === 'bank' || a.kind === 'cash').length > 1 ? ' · ' + esc(accName(t.acc)) : '') + '</small><small class="faint num" style="text-align:right">' + (t.bal != null ? '<span class="money">' + nf(t.bal) + ' €</span>' : '') + '</small></button>';
+  const rawC = catById(t.cat), c = isInternal(t) && t.cat === 'otros' ? catById('interno') : (t.amount > 0 && rawC.kind === 'expense' ? catById('ingresos') : rawC);
+  const incoming = t.amount > 0, mer = merchantOf(t.desc);
+  return '<button class="item" type="button" data-tx="' + t.id + '"><span class="av" style="background:var(' + c.color + ')">' + esc(initials(mer)) + '</span><b>' + esc(fmtMerchant(mer)) + '</b><span class="amt ' + (incoming ? 'up' : '') + '">' + money(t.amount, { sign: true }) + '</span><small>' + esc(c.name) + (state.accounts.filter(a => a.kind === 'bank' || a.kind === 'cash').length > 1 ? ' · ' + esc(accName(t.acc)) : '') + '</small><small class="faint num tx-bal">' + (t.bal != null ? '<span class="money">' + nf(t.bal) + ' €</span>' : '') + '</small></button>';
 }
 function catRow(k, v, max, total, attrs) {
   const c = catById(k), sh = total ? nf(v / total * 100, 0) + '\u00A0% · ' : '';
-  return '<button type="button" class="crow" ' + attrs + '><span class="av" style="background:var(' + c.color + ')">' + esc(catInitials(c)) + '</span><b>' + esc(c.name) + '</b><span class="amt"><small class="faint" style="font-weight:500;margin-right:4px">' + sh + '</small>' + money(v, { d: 0 }) + '</span><span class="bar"><i style="width:' + Math.max(2, v / max * 100) + '%;background:var(' + c.color + ')"></i></span></button>';
+  return '<button type="button" class="crow" ' + attrs + '><span class="av" style="background:var(' + c.color + ')">' + esc(catInitials(c)) + '</span><b>' + esc(c.name) + '</b><span class="amt"><small class="faint crow-sh">' + sh + '</small>' + money(v, { d: 0 }) + '</span><span class="bar"><i style="width:' + Math.max(2, v / max * 100) + '%;background:var(' + c.color + ')"></i></span></button>';
 }
 function goalRow(g) {
   const saved = goalSaved(g), pc = g.target ? Math.min(100, saved / g.target * 100) : 0, left = Math.max(0, g.target - saved);
@@ -36,8 +62,10 @@ function holdingRow(x) {
 }
 function accCard(a, rows) {
   const v = accValue(a, rows), n = a.kind === 'bank' || a.kind === 'cash' ? 0 : rows.filter(r => r.acc === a.id && !r.bank).length;
-  const sub = a.iban ? '•••• ' + a.iban.slice(-4) : a.address ? a.address.slice(0, 6) + '…' + a.address.slice(-4) : n ? n + ' ' + (n === 1 ? 'activo' : 'activos') : (KIND_NAMES[a.kind] || '');
+  const iban4 = a.iban ? a.iban.slice(-4) : '', hasIbanInName = iban4 && String(a.name || '').includes(iban4);
+  const lastTx = (a.kind === 'bank' || a.kind === 'cash') ? state.tx.filter(t => t.acc === a.id).map(t => t.date).sort().at(-1) : '';
   const ik = instKey(a), auto = !!(state.apiBal[a.id] || a.ebUid);
+  const sub = (iban4 && !hasIbanInName) ? '•••• ' + iban4 : a.address ? a.address.slice(0, 6) + '…' + a.address.slice(-4) : n ? n + ' ' + (n === 1 ? 'activo' : 'activos') : lastTx ? 'Últ. mov. ' + fmtDate(lastTx, { day: 'numeric', month: 'short' }) : auto ? 'Sincronizado en vivo' : 'Saldo verificado';
   return '<button type="button" class="acard k-' + a.kind + (ik ? ' inst-' + ik : '') + '" data-acc="' + a.id + '"><span class="top"><span>' + esc(a.name) + '</span>' + (auto ? '<span class="tag ok">auto</span>' : '<span class="tag">' + esc(KIND_NAMES[a.kind] || '') + '</span>') + '</span><span><span class="val">' + money(v, { d: 0 }) + '</span><br><span class="sub">' + esc(sub) + '</span></span></button>';
 }
 function derivCardHTML(d) {
@@ -49,7 +77,7 @@ function derivCardHTML(d) {
     + '<b data-live-dpnl="' + esc(d.id) + '" class="' + cls(d.pnlEUR) + '">' + money(d.pnlEUR, { sign: true }) + '</b></div>'
     + '<div class="deriv-metrics">'
     + '<div><small>Entrada</small><b>' + nf(d.entry, d.entry < 10 ? 4 : 2) + qUnit + '</b></div>'
-    + '<div><small>Mark en vivo</small><b>' + (d.mark ? nf(d.mark, d.mark < 10 ? 4 : 2) + qUnit : '—') + '</b></div>'
+    + '<div><small>Precio actual</small><b>' + (d.mark ? nf(d.mark, d.mark < 10 ? 4 : 2) + qUnit : '—') + '</b></div>'
     + '<div><small>Margen / ROI</small><b>' + (d.marginEUR ? money(d.marginEUR, { d: 0 }) : '—') + (d.roiPct != null ? ' <span class="' + cls(d.roiPct) + '">(' + pct(d.roiPct, 1) + ')</span>' : '') + '</b></div>'
     + '</div>'
     + (d.liq ? '<div><div class="row" style="justify-content:space-between;font-size:12px"><span class="muted">Liquidación: <b>' + nf(d.liq, d.liq < 10 ? 4 : 2) + qUnit + '</b></span><span style="color:' + col + ';font-weight:650;white-space:nowrap">' + (d.liqDistPct != null ? 'A ' + nf(d.liqDistPct, 1) + '\u00A0% · ' + (d.liqDistPct < 10 ? 'Riesgo' : 'Holgado') : '') + '</span></div><div class="liq-meter"><i style="width:' + meterW + '%;background:' + col + '"></i></div></div>' : '')
@@ -85,20 +113,42 @@ function onboarding() {
     + '<section class="panel span5"><h2>Arrastra aquí tus extractos</h2><div class="drop" id="drop" data-act="import">' + ico('upload', 'style="width:28px;height:28px;color:var(--brand)"') + '<br><b>Excel, CSV, OFX, QIF o captura de pantalla</b><br><span class="faint">Santander, Revolut, KuCoin, Kraken, Binance, Trade Republic…</span></div><p class="note">Todo se procesa primero en tu navegador. Si el formato no es estándar, Gemini IA puede extraerlo automáticamente.</p></section></div>';
 }
 
-// ===== Barra superior en directo y Drawer IA de Escritorio =====
+// ===== Barra superior Command Header y Drawer IA de Escritorio =====
 function renderDesktopTopbar() {
   const el = $('desktop-topbar'); if (!el) return;
-  const syms = trackedAssets().filter(s => !FIAT.includes(s) && !STABLE.includes(s)).slice(0, 3);
-  const pills = syms.map(s => {
-    const p = state.prices[s], eur = priceEUR(s);
-    return '<button type="button" class="live-pill" data-select-sym="' + esc(s) + '"><b>' + esc(s) + '</b><span data-live-price="' + esc(s) + '">' + (eur ? money(eur, { d: eur < 1 ? 4 : eur < 100 ? 2 : 0 }) : '—') + '</span>' + (p?.chg != null ? '<span data-live-chg="' + esc(s) + '" class="' + cls(p.chg) + '">' + pct(p.chg) + '</span>' : '') + '</button>';
+  const navItems = [
+    ['resumen', 'Inicio', 'home'],
+    ['movimientos', 'Movimientos', 'list'],
+    ['inversiones', 'Mercados', 'chart'],
+    ['cuentas', 'Cuentas', 'bank'],
+    ['objetivos', 'Plan', 'target'],
+    ['impuestos', 'Impuestos', 'tax'],
+    ['ajustes', 'Ajustes', 'gear'],
+    ['copiloto', 'Copiloto', 'brain']
+  ];
+  const alCount = (state.priceAlerts || []).filter(x => x.active).length;
+  const navHTML = navItems.map(([id, n, ic]) => {
+    const badge = id === 'objetivos' && alCount ? '<span class="nav-badge">' + alCount + '</span>' : '';
+    const isAi = id === 'copiloto' ? ' top-nav-ai' : '';
+    return '<button type="button" class="top-nav-btn' + isAi + '" data-go="' + id + '"' + (view === id ? ' aria-current="page"' : '') + '>' + ico(ic) + '<span>' + n + '</span>' + badge + '</button>';
   }).join('');
-  el.innerHTML = '<span class="live-pill" style="cursor:default"><span class="live-dot ' + (liveConnected ? 'on' : '') + '"></span><span>En directo</span></span>'
-    + '<div class="ticker-strip">' + pills + '</div>'
-    + '<button type="button" class="cmd-trigger" data-act="cmd-open">' + ico('search') + '<span>Buscar…</span><kbd>Ctrl+K</kbd></button>'
-    + btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'small')
-    + btn(ico('plus') + 'Apuntar', 'data-act="quick"', 'primary small')
-    + btn(ico('brain') + 'IA', 'data-act="ai-drawer-toggle"', 'ai small');
+  const btcP = state.prices.BTC, btcEur = priceEUR('BTC');
+  const btcPill = '<button type="button" class="live-pill" data-select-sym="BTC" title="Mercados en directo"><span class="live-dot ' + (liveConnected ? 'on' : '') + '"></span><b>BTC</b><span data-live-price="BTC">' + (btcEur ? money(btcEur, { d: 0 }) : '—') + '</span>' + (btcP?.chg != null ? '<span data-live-chg="BTC" class="top-chg ' + cls(btcP.chg) + '">' + pct(btcP.chg) + '</span>' : '') + '</button>';
+  const dark = document.documentElement.dataset.theme !== 'light', hid = !!state.settings.hide;
+  el.innerHTML = '<div class="top-left">'
+    + '<button type="button" class="top-brand" data-go="resumen"><img src="icon-192.png" alt="" width="24" height="24"><b>Finanzas</b></button>'
+    + '<nav class="top-nav" aria-label="Principal">' + navHTML + '</nav>'
+    + '</div>'
+    + '<div class="top-right">'
+    + btcPill
+    + '<button type="button" class="cmd-trigger" data-act="cmd-open" title="Buscar (Ctrl+K)">' + ico('search') + '<span>Buscar</span><kbd>Ctrl+K</kbd></button>'
+    + btn(ico('link') + '<span>Conectar</span>', 'data-act="connect-hub"', 'small top-act-btn')
+    + btn(ico('plus') + '<span>Apuntar</span>', 'data-act="quick"', 'primary small top-act-btn')
+    + '<button type="button" id="sync-top-desktop" class="sync-pill" data-act="sync-now" aria-label="Estado de sincronización"></button>'
+    + '<button type="button" id="hide-top-desktop" class="iconbtn" data-act="hide" aria-label="Privacidad" title="Privacidad">' + ico(hid ? 'eyeoff' : 'eye') + '</button>'
+    + '<button type="button" id="theme-top-desktop" class="iconbtn" data-act="theme" aria-label="Cambiar tema" title="Cambiar tema">' + ico(dark ? 'sun' : 'moon') + '</button>'
+    + '</div>';
+  paintSync();
 }
 
 function renderAIDrawer() {
@@ -114,50 +164,105 @@ function renderAIDrawer() {
     + '<form class="ai-composer" data-chat-form><input type="text" placeholder="Pregunta al Copiloto…" aria-label="Pregunta al Copiloto"><button class="btn ai small" type="submit">' + ico('send') + '</button></form>';
 }
 
-// ===== 1. Inicio Escritorio (Centro de Control Bento) =====
+// ===== 1. Inicio Escritorio (Centro de Control Bento — Sin duplicidades) =====
 function vResumenDesktop() {
   if (!state.accounts.length) return head('Bienvenido a Finanzas', 'Todo tu patrimonio, bancos, exchanges, derivados e IA en un solo sitio.') + onboarding();
-  const nw = netWorth(), inv = investmentSummary(), ds = derivSummary(), ser = netSeries(rangeDays()), pts = ser.pts, chg = pts.length > 1 ? pts.at(-1)[1] - pts[0][1] : null;
-  const m = monthKey(today()), mt = monthTotals(m), s = safeToSpend(), cash = sum(nw.rows.filter(r => r.bank).map(r => r.eur)), derivEq = nw.parts.deriv || 0, al = alerts().slice(0, 5), up = upcoming(31).slice(0, 4);
+  const nw = netWorth(), inv = investmentSummary(), ds = derivSummary(), ser = netSeries(rangeDays()), pts = ser.pts;
+  const cw = range === 'Máx' ? null : changeWindow(rangeDays());
+  const chg = cw ? cw.value : (pts.length > 1 ? pts.at(-1)[1] - pts[0][1] : null);
+  const m = monthKey(today()), mt = monthTotals(m), s = safeToSpend(), cash = sum(nw.rows.filter(r => r.bank).map(r => r.eur)), derivEq = nw.parts.deriv || 0, al = alerts().slice(0, 3), up = upcoming(31).slice(0, 3);
   const last = state.tx.slice().sort((a, b) => b.date.localeCompare(a.date) || (a.ord ?? 0) - (b.ord ?? 0)).slice(0, 6);
   const cats = Object.entries(mt.byCat).sort((a, b) => b[1] - a[1]), maxCat = cats[0]?.[1] || 1;
   const isB = a => a.kind === 'bank' || a.kind === 'cash';
   const accs = state.accounts.slice().sort((a, b) => (isB(b) - isB(a)) || (accValue(b, nw.rows) - accValue(a, nw.rows))), assets = homeAssets(nw.rows), ders = derivRows();
-  const titleMonth = monthLong(m).replace(/^./, c => c.toUpperCase());
+  const monthWord = monthLong(m).split(' ')[0];
+  const monthCap = monthWord.replace(/^./, c => c.toUpperCase());
   const dersLbl = ders.length === 1 ? '1 derivado abierto' : ders.length + ' derivados abiertos';
-  const posLbl = ds.count === 1 ? '1 posición' : ds.count + ' posiciones';
+  const hasSpot = assets.length > 0 || Math.abs(inv.value) >= 1;
+  const hasDerivs = ders.length > 0 || Math.abs(derivEq) >= 1;
+  const hasInv = hasSpot || hasDerivs;
+  const derivVal = ds.equityEUR || derivEq || ds.totalMarginEUR;
+  const totRef = Math.max(1, Math.abs(cash) + (hasSpot ? Math.abs(inv.value) : 0) + (hasDerivs ? Math.abs(derivVal) : 0));
+  const cashPct = Math.max(0, Math.min(100, cash / totRef * 100));
+  const spotPct = hasSpot ? Math.max(2, Math.min(100, Math.abs(inv.value) / totRef * 100)) : 0;
+  const derivPct = hasDerivs ? Math.max(2, Math.min(100, Math.abs(derivVal) / totRef * 100)) : 0;
+  const cush = cushion(), avgExp = avgMonthlyExpense();
+  const expRatio = mt.inc > 0 ? Math.min(100, Math.round(mt.exp / mt.inc * 100)) : (mt.exp > 0 ? 100 : 0);
 
-  const invTotal = inv.value + derivEq;
-  return head(titleMonth, 'Centro de control financiero · ' + fmtDate(today(), { day: 'numeric', month: 'long', year: 'numeric' }),
-    btn(ico('sync') + 'Actualizar', state.settings.worker ? 'data-act="refresh"' : 'data-act="prices"', 'small') + btn(ico('upload') + 'Importar', 'data-act="import"', 'primary small'))
-    + '<div class="kpi-strip" style="margin-bottom:16px">'
-    + '<div class="kpi-card"><small>Patrimonio neto</small><b data-live-nw>' + moneyBig(nw.total) + '</b><span class="' + cls(chg || 0) + '">' + (chg != null ? money(chg, { sign: true, d: 0 }) + ' ' + RANGE_TXT[range] : 'Base inicial') + '</span></div>'
-    + '<div class="kpi-card"><small>En bancos (líquido)</small><b>' + money(cash, { d: 0 }) + '</b><span>' + (cushion() != null ? nf(cushion(), 1) + ' meses de colchón · media ' + money(avgMonthlyExpense(), { d: 0 }) + '/mes' : 'Bancos y liquidez') + '</span></div>'
-    + '<div class="kpi-card"><small>Cartera Spot</small><b>' + money(inv.value, { d: 0 }) + '</b><span class="' + cls(inv.day) + '">' + money(inv.day, { sign: true, d: 0 }) + ' hoy · ' + assets.length + ' activos</span></div>'
-    + '<div class="kpi-card"><small>Derivados y Márgenes</small><b class="' + cls(ds.totalPnlEUR) + '">' + (ds.count ? money(ds.totalPnlEUR, { sign: true }) : 'Sin abiertos') + '</b><span>' + (ds.count ? posLbl + ' · margen ' + money(ds.totalMarginEUR, { d: 0 }) : 'KuCoin / Kraken / manual') + '</span></div>'
+  const allocStrip = hasInv
+    ? '<div class="alloc-strip">'
+      + '<div class="alloc-track">'
+      + '<i style="width:' + cashPct.toFixed(1) + '%;background:var(--brand)"></i>'
+      + (hasSpot ? '<i style="width:' + spotPct.toFixed(1) + '%;background:var(--inv)"></i>' : '')
+      + (hasDerivs ? '<i style="width:' + derivPct.toFixed(1) + '%;background:var(--ai)"></i>' : '')
+      + '</div>'
+      + '<div class="alloc-items">'
+      + '<button type="button" class="alloc-item" data-go="cuentas"><i style="background:var(--brand)"></i><span>Liquidez</span><b>' + money(cash, { d: 0 }) + '</b><small>' + nf(nw.total ? cash / nw.total * 100 : 100, 0) + '\u00A0%</small></button>'
+      + (hasSpot ? '<button type="button" class="alloc-item" data-go="inversiones"><i style="background:var(--inv)"></i><span>Spot</span><b>' + money(inv.value, { d: 0 }) + '</b><small>' + nf(nw.total ? inv.value / nw.total * 100 : 0, 0) + '\u00A0%</small><small class="' + cls(inv.day) + '">(' + money(inv.day, { sign: true, d: 0 }) + ' en spot hoy)</small></button>' : '')
+      + (hasDerivs ? '<button type="button" class="alloc-item" data-go="inversiones" data-inv-deriv="1"><i style="background:var(--ai)"></i><span>Derivados (' + ds.count + ')</span><b>' + money(derivVal, { d: 0 }) + '</b><small>margen ' + money(ds.totalMarginEUR, { d: 0 }) + '</small><small class="' + cls(ds.totalPnlEUR) + '">· PyG ' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + '</small></button>' : '')
+      + '</div></div>'
+    : '';
+
+  const col3 = hasInv
+    ? '<section class="panel span4 home-col-extra"><div class="module-title"><b>Cartera y derivados</b>' + btn('Mercados →', 'data-go="inversiones"', 'ghost small') + '</div>'
+      + (ders.length ? '<div class="callout ' + (ds.atRiskCount ? 'err' : 'ok') + ' deriv-banner"><b>' + dersLbl + ' (' + money(derivVal, { d: 0 }) + '):</b> margen ' + money(ds.totalMarginEUR, { d: 0 }) + ' · PyG ' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + (ds.minLiqDist != null ? ' · liq.\u00A0' + nf(ds.minLiqDist, 1) + '\u00A0%' : '') + '</div>' : '')
+      + (assets.length ? '<div class="home-assets-list">' + assets.slice(0, 5).map(x => '<button type="button" class="asset-line" data-asset="' + esc(x.asset) + '"><i style="background:' + assetColor(x.asset) + '">' + esc(x.asset.slice(0, 4)) + '</i><span><b>' + esc(state.assets[x.asset]?.name || x.asset) + '</b><small>' + nf(x.qty, x.qty < 1 ? 6 : 2, 0) + ' ' + esc(x.asset) + '</small></span><strong>' + money(x.eur, { d: 0 }) + '<small data-live-chg="' + esc(x.asset) + '" class="' + cls(state.prices[x.asset]?.chg) + '">' + (state.prices[x.asset]?.chg != null ? pct(state.prices[x.asset].chg) : '') + '</small></strong></button>').join('') + '</div>' : '')
+      + '</section>'
+    : '<section class="panel span4 home-col-extra"><div class="module-title"><b>Gastos de ' + monthWord + '</b>' + btn('Detalle →', 'data-go="movimientos"', 'ghost small') + '</div>'
+      + (cats.length ? cats.slice(0, 4).map(([k, v]) => catRow(k, v, maxCat, mt.exp, 'data-go="movimientos"')).join('') : compactEmpty('Sin gastos este mes', 'Importa un extracto para ver el desglose por categorías.'))
+      + '<div class="panel-foot">' + svgCompare(m) + '</div></section>';
+
+  const maxUp = Math.max(0, 3 - al.length);
+  const upSlice = up.slice(0, maxUp);
+  const extraCatsCount = hasInv ? Math.max(0, 2 - al.length) : 0;
+  const flowMiddle = '<div class="flow-extra">'
+    + al.map(a => '<div class="decision-line"><b>' + esc(a.txt) + '</b><button type="button" data-dismiss="' + esc(a.id) + '" aria-label="Descartar">×</button></div>').join('')
+    + (upSlice.length ? '<div class="label">Próximos cargos</div>' + upSlice.map(x => '<div class="upcoming-line"><time>' + fmtDate(x.next, { day: 'numeric', month: 'short' }) + '</time><span><b>' + esc(fmtMerchant(x.name)) + '</b><small>' + esc(fmtFreq(x.every)) + '</small></span><strong>' + money(-x.amount, { d: 0 }) + '</strong></div>').join('') : '')
+    + (extraCatsCount > 0 && cats.length ? '<div class="label">Principales gastos</div>' + cats.slice(0, extraCatsCount).map(([k, v]) => { const c = catById(k); return '<div class="mini-cat-line"><span class="mini-cat-name"><i style="background:var(' + c.color + ')"></i>' + esc(c.name) + '</span><span class="num"><b>' + money(v, { d: 0 }) + '</b> <small class="faint">' + nf(mt.exp ? v / mt.exp * 100 : 0, 0) + '\u00A0%</small></span></div>'; }).join('') : '')
+    + '</div>';
+
+  const thirdFlowCell = (!hasInv && Math.round(s.f.end) === Math.round(cash))
+    ? '<div class="change-cell"><small>Media mensual</small><b>' + money(avgExp, { d: 0 }) + '</b><span>gasto habitual</span></div>'
+    : '<div class="change-cell"><small>Fin de mes</small><b>' + money(s.f.end, { d: 0 }) + '</b><span>liquidez est.</span></div>';
+  const chartH = hasInv ? 185 : 148;
+
+  return '<div class="grid">'
+    + '<section class="panel span8 hero-main">'
+    + '<div class="hero-top"><div class="position-eyebrow"><span>Patrimonio neto</span><span class="faint">· ' + fmtDate(today(), { day: 'numeric', month: 'short', year: 'numeric' }) + '</span></div>'
+    + '<div class="hero-controls">' + rangeBtns() + btn(ico('sync'), state.settings.worker ? 'data-act="refresh" title="Actualizar"' : 'data-act="prices" title="Actualizar precios"', 'ghost small') + btn(ico('upload') + 'Importar', 'data-act="import"', 'small') + '</div></div>'
+    + '<div class="hero-val-row"><div class="position-value" data-live-nw>' + moneyBig(nw.total) + '</div>'
+    + (chg == null ? '<span class="pill">Base inicial</span>' : '<span class="pill ' + cls(chg) + '">' + money(chg, { sign: true, d: 0 }) + ' ' + RANGE_TXT[range] + '</span>')
+    + (!hasInv ? '<button type="button" class="alloc-cta" data-act="connect-hub" data-tab="okx">' + ico('plus') + '<span>Conectar inversión / exchange</span></button>' : '')
     + '</div>'
-    + '<div class="grid">'
-    + '<section class="panel span8"><div class="position-eyebrow">Evolución del patrimonio</div><div class="position-value" data-live-nw>' + moneyBig(nw.total) + '</div><div class="position-status">' + (chg == null ? '<span>Sin histórico comparable todavía</span>' : '<b class="' + cls(chg) + '">' + money(chg, { sign: true, d: 0 }) + '</b><span>' + RANGE_TXT[range] + '</span>') + '</div><div class="position-chart">' + svgLine(pts, { id: 'nw', h: 195 }) + '</div><div class="row" style="justify-content:space-between">' + rangeBtns() + '<div class="change-grid" style="flex:1;max-width:440px">' + changeCell(1, 'Hoy') + changeCell(7, '7 días') + changeCell(30, '30 días') + '</div></div></section>'
-    + '<aside class="panel span4"><div class="module-title"><b>Distribución y flujo</b><button type="button" class="btn ghost small" data-go="movimientos">Detalle →</button></div>'
-    + '<button type="button" data-go="cuentas" class="breakdown-row"><span>Bancos (' + nf(nw.total ? cash / nw.total * 100 : 0, 1) + '\u00A0%)</span><b>' + money(cash, { d: 0 }) + '</b><i style="--w:' + nf(nw.total ? cash / nw.total * 100 : 0, 0) + '%;--bar-c:var(--brand)"></i></button>'
-    + '<button type="button" data-go="inversiones" class="breakdown-row"><span>Cartera Spot (' + nf(nw.total ? inv.value / nw.total * 100 : 0, 1) + '\u00A0%)</span><b>' + money(inv.value, { d: 0 }) + '</b><i style="--w:' + nf(nw.total ? inv.value / nw.total * 100 : 0, 0) + '%;--bar-c:var(--inv)"></i></button>'
-    + (Math.abs(derivEq) >= 1 ? '<button type="button" data-go="inversiones" data-inv-deriv="1" class="breakdown-row"><span>Derivados manuales (' + nf(nw.total ? derivEq / nw.total * 100 : 0, 1) + '\u00A0%)</span><b>' + money(derivEq, { d: 0 }) + '</b><i style="--w:' + Math.min(100, nf(nw.total ? Math.max(2, derivEq / nw.total * 100) : 0, 0)) + '%;--bar-c:var(--ai)"></i></button>' : '')
-    + '<div class="stats" style="grid-template-columns:1fr 1fr;margin-top:12px"><div class="stat"><small>Ingresos mes</small><b class="up">' + money(mt.inc, { d: 0 }) + '</b></div><div class="stat"><small>Gastos mes</small><b>' + money(mt.exp, { d: 0 }) + '</b></div></div>'
-    + '<div class="callout info" style="margin-top:12px"><b>' + money(s.per, { d: 0 }) + '/día</b> de margen este mes · previsión en bancos ' + money(s.f.end, { d: 0 }) + '</div>'
+    + allocStrip
+    + '<div class="position-chart">' + svgLine(pts, { id: 'nw', h: chartH }) + '</div>'
+    + '<div class="panel-foot">' + changeGridHTML('div') + '</div>'
+    + '</section>'
+    + '<aside class="panel span4 hero-flow"><div class="module-title"><b>Flujo de ' + monthCap + '</b><button type="button" class="btn ghost small" data-go="movimientos">Movimientos →</button></div>'
+    + '<div class="flow-summary">'
+    + '<div class="flow-summary-nums">'
+    + '<div><small>Ingresos</small><b class="up">' + money(mt.inc, { d: 0 }) + '</b></div>'
+    + '<div><small>Gastos</small><b>' + money(mt.exp, { d: 0 }) + '</b></div>'
+    + '<div><small>Balance</small><b class="' + cls(mt.save) + '">' + money(mt.save, { sign: true, d: 0 }) + '</b></div>'
+    + '</div>'
+    + '<div class="bar" title="Gastos sobre ingresos (' + expRatio + '%)"><i style="width:' + Math.max(mt.exp > 0 ? 4 : 0, expRatio) + '%;background:' + (mt.inc > 0 && mt.exp > mt.inc ? 'var(--down)' : 'var(--flow)') + '"></i></div>'
+    + '</div>'
+    + '<div class="change-grid flow-kpis">'
+    + '<div class="change-cell"><small>Margen/día</small><b>' + money(s.per, { d: 0 }) + '/día</b><span>ritmo mes</span></div>'
+    + '<div class="change-cell"><small>Colchón</small><b>' + (cush != null ? nf(cush, 1) + '\u00A0m' : '—') + '</b><span>' + (avgExp ? 'media ' + money(avgExp, { d: 0 }) : 'liquidez') + '</span></div>'
+    + thirdFlowCell
+    + '</div>'
+    + flowMiddle
+    + '<div class="panel-foot"><button type="button" class="btn ai small full" data-go="copiloto">' + ico('brain') + 'Revisar ' + monthWord + ' con Copiloto IA</button></div>'
     + '</aside>'
-    + '<section class="panel span4"><div class="module-title"><b>Cuentas y plataformas</b>' + btn('+ Conectar', 'data-act="connect-hub"', 'ghost small') + '</div>' + accs.slice(0, 6).map(a => accountLine(a, nw.rows)).join('') + '<div class="row" style="margin-top:10px">' + btn('Ver todas (' + accs.length + ')', 'data-go="cuentas"', 'ghost small') + '</div></section>'
-    + '<section class="panel span4"><div class="module-title"><b>Activos y derivados</b>' + btn('Terminal →', 'data-go="inversiones"', 'ghost small') + '</div>'
-    + (ders.length ? '<div class="callout ' + (ds.atRiskCount ? 'err' : 'ok') + '" style="margin-bottom:10px;padding:8px 12px"><b>' + dersLbl + ' en vivo:</b> PyG ' + money(ds.totalPnlEUR, { sign: true }) + (ds.minLiqDist != null ? ' · liq.\u00A0' + nf(ds.minLiqDist, 1) + '\u00A0%' : '') + '</div>' : '')
-    + (assets.length ? assets.slice(0, 5).map(x => '<button type="button" class="asset-line" data-asset="' + esc(x.asset) + '"><i style="background:' + assetColor(x.asset) + '">' + esc(x.asset.slice(0, 4)) + '</i><span><b>' + esc(state.assets[x.asset]?.name || x.asset) + '</b><small>' + nf(x.qty, x.qty < 1 ? 6 : 2, 0) + ' ' + esc(x.asset) + '</small></span><strong>' + money(x.eur, { d: 0 }) + '<small data-live-chg="' + esc(x.asset) + '" class="' + cls(state.prices[x.asset]?.chg) + '">' + (state.prices[x.asset]?.chg != null ? pct(state.prices[x.asset].chg) : '') + '</small></strong></button>').join('') : compactEmpty('Sin inversiones todavía', 'Conecta KuCoin/Kraken o importa un historial.', btn('Ir a Mercados', 'data-go="inversiones"', 'small')))
+    + '<section class="panel span4 home-col-acc"><div class="module-title"><b>Cuentas</b><button type="button" class="btn ghost small" data-go="cuentas">Ver todas (' + accs.length + ') →</button></div>'
+    + '<div class="acc-list-wrap">' + accs.slice(0, 6).map(a => accountLine(a, nw.rows)).join('') + '</div>'
+    + '<div class="panel-foot">' + btn(ico('link') + '+ Conectar banco o exchange', 'data-act="connect-hub"', 'small full') + '</div>'
     + '</section>'
-    + '<section class="panel span4"><div class="module-title"><b>Avisos y próximos cargos</b>' + btn('Plan →', 'data-go="objetivos"', 'ghost small') + '</div>'
-    + (al.length ? al.map(a => '<div class="decision-line"><b>' + esc(a.txt) + '</b><button type="button" data-dismiss="' + esc(a.id) + '" aria-label="Descartar">×</button></div>').join('') : '<p class="muted" style="margin:0 0 8px">Sin alertas activas.</p>')
-    + (up.length ? '<div class="label">Próximos recibos</div>' + up.map(x => '<div class="upcoming-line"><time>' + fmtDate(x.next, { day: 'numeric', month: 'short' }) + '</time><span><b>' + esc(x.name) + '</b><small>Cada ' + x.every + ' días</small></span><strong>' + money(-x.amount, { d: 0 }) + '</strong></div>').join('') : '')
+    + '<section class="panel span4 home-col-tx"><div class="module-title"><b>Movimientos recientes</b>' + btn('Ver todos →', 'data-go="movimientos"', 'ghost small') + '</div>'
+    + (last.map(txItem).join('') || compactEmpty('Sin movimientos', 'Importa tu extracto bancario.'))
     + '</section>'
-    + '<section class="panel span5"><div class="module-title"><b>Principales gastos de ' + monthLong(m).split(' ')[0] + '</b><button type="button" class="btn ghost small" data-go="movimientos">Ver gastos →</button></div>'
-    + (cats.length ? cats.slice(0, 5).map(([k, v]) => catRow(k, v, maxCat, mt.exp, 'data-go="movimientos"')).join('') : compactEmpty('Sin gastos este mes', 'Importa un extracto para ver categorías.'))
-    + '<div style="margin-top:12px">' + svgCompare(m) + '</div></section>'
-    + '<section class="panel span7"><div class="module-title"><b>Actividad bancaria reciente</b>' + btn('Ver todos →', 'data-go="movimientos"', 'ghost small') + '</div>' + (last.map(txItem).join('') || compactEmpty('Sin movimientos', 'Importa tu extracto bancario.')) + '</section>'
+    + col3
     + '</div>';
 }
 
@@ -190,7 +295,7 @@ function marketChartDeck(sym) {
   return '<section class="panel">'
     + '<div class="chart-toolbar">'
     + '<div class="row" style="gap:12px;' + (narrow() ? 'width:100%;justify-content:space-between;flex-wrap:nowrap' : '') + '"><div class="row" style="gap:12px;flex-wrap:nowrap"><span style="width:36px;height:36px;border-radius:10px;background:' + assetColor(sym) + ';color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px">' + esc(sym.slice(0, 4)) + '</span><div><b style="font-size:17px">' + esc(state.assets[sym]?.name || sym) + '</b> <span class="faint">' + esc(sym) + '</span><div class="row" style="gap:8px"><b class="num" style="font-size:20px" data-live-price="' + esc(sym) + '">' + (pr ? money(pr, { d: pr < 1 ? 4 : 2 }) : '—') + '</b>' + (chg != null ? '<span class="pill ' + cls(chg) + '" data-live-chg="' + esc(sym) + '">' + pct(chg) + '</span>' : '') + '</div></div></div>' + (narrow() ? btn('Detalle', 'data-asset="' + esc(sym) + '"', 'small') : '') + '</div>'
-    + '<div class="row"><div class="seg"><button type="button" data-chartmode="candles" aria-pressed="' + (chartMode === 'candles') + '">' + ico('candles') + 'Velas Pro</button><button type="button" data-chartmode="tv" aria-pressed="' + (chartMode === 'tv') + '">TradingView</button><button type="button" data-chartmode="portfolio" aria-pressed="' + (chartMode === 'portfolio') + '">Cartera</button></div>'
+    + '<div class="row"><div class="seg"><button type="button" data-chartmode="candles" aria-pressed="' + (chartMode === 'candles') + '">' + ico('candles') + 'Velas</button><button type="button" data-chartmode="tv" aria-pressed="' + (chartMode === 'tv') + '">TradingView</button><button type="button" data-chartmode="portfolio" aria-pressed="' + (chartMode === 'portfolio') + '">Cartera</button></div>'
     + (narrow() ? '' : btn('Detalle', 'data-asset="' + esc(sym) + '"', 'small')) + '</div></div>'
     + (chartMode === 'tv'
       ? '<iframe class="tv-frame" title="TradingView ' + esc(sym) + '" loading="lazy" referrerpolicy="origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" src="' + esc(tradingViewURL(sym)) + '"></iframe>'
@@ -223,13 +328,13 @@ function vInvDesktop() {
   let tabBody = '';
   if (invTab === 'derivs') {
     tabBody = '<div class="kpi-strip" style="margin-bottom:14px">'
-      + '<div class="kpi-card"><small>PyG abierto en vivo</small><b class="' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true }) + '</b><span>' + posLbl + '</span></div>'
+      + '<div class="kpi-card"><small>PyG abierto en vivo</small><b class="' + cls(ds.totalPnlEUR) + '">' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + '</b><span>' + posLbl + ' · capital ' + money(ds.equityEUR, { d: 0 }) + '</span></div>'
       + '<div class="kpi-card"><small>Margen utilizado</small><b>' + money(ds.totalMarginEUR, { d: 0 }) + '</b><span>Exposición bruta ' + money(ds.grossNotionalEUR, { d: 0 }) + '</span></div>'
-      + '<div class="kpi-card"><small>Exposición neta</small><b class="' + cls(ds.netExposureEUR) + '">' + money(ds.netExposureEUR, { sign: true, d: 0 }) + '</b><span>Long − Short</span></div>'
+      + '<div class="kpi-card"><small>Exposición neta</small><b class="' + cls(ds.netExposureEUR) + '">' + money(ds.netExposureEUR, { sign: true, d: 0 }) + '</b><span>Largo − Corto</span></div>'
       + '<div class="kpi-card"><small>Menor dist. liquidación</small><b class="' + (ds.minLiqDist != null && ds.minLiqDist < 12 ? 'down' : '') + '">' + (ds.minLiqDist != null ? nf(ds.minLiqDist, 1) + '\u00A0%' : '—') + '</b><span>' + (ds.atRiskCount ? ds.atRiskCount + ' en zona de atención' : 'Margen holgado') + '</span></div></div>'
       + '<div class="grid"><section class="panel span8"><div class="module-title"><b>Posiciones de Derivados y Márgenes</b>' + btn(ico('plus') + 'Añadir posición manual', 'data-act="add-deriv"', 'primary small') + '</div>'
       + (ders.length ? '<div class="deriv-grid">' + ders.map(derivCardHTML).join('') + '</div>' : compactEmpty('Sin derivados abiertos', 'Conecta KuCoin/Kraken Futures en solo lectura o registra una posición manual para monitorizar margen y distancia a liquidación.', btn('+ Nuevo derivado', 'data-act="add-deriv"', 'primary small')))
-      + '</section><section class="panel span4"><div class="module-title"><b>Simulador de estrés (Spot + Derivados)</b></div><p class="note" style="margin-top:0">Impacto si el mercado se mueve:</p><div class="seg" style="width:100%;justify-content:space-between;margin:10px 0">' + [-20, -10, 10, 20].map(n => '<button type="button" data-scenario="' + n + '" aria-pressed="' + (marketShock === n) + '">' + (n > 0 ? '+' : '') + n + '%</button>').join('') + '</div><div class="stat"><small>Spot (' + money(spotShock, { sign: true, d: 0 }) + ') + Derivados (' + money(derivShock, { sign: true, d: 0 }) + ')</small><b class="' + cls(stressImpact) + '">' + money(stressImpact, { sign: true, d: 0 }) + '</b></div>'
+      + '</section><section class="panel span4"><div class="module-title"><b>Simulador de cartera (Spot + Derivados)</b></div><p class="note" style="margin-top:0">Impacto si el mercado se mueve:</p><div class="seg" style="width:100%;justify-content:space-between;margin:10px 0">' + [-20, -10, 10, 20].map(n => '<button type="button" class="' + (marketShock === n ? 'on' : '') + '" data-scenario="' + n + '" aria-pressed="' + (marketShock === n) + '">' + (n > 0 ? '+' : '') + n + '%</button>').join('') + '</div><div class="stat"><small>Spot (' + money(spotShock, { sign: true, d: 0 }) + ') + Derivados (' + money(derivShock, { sign: true, d: 0 }) + ')</small><b class="' + cls(stressImpact) + '">' + money(stressImpact, { sign: true, d: 0 }) + '</b></div>'
       + (stressLiqHits.length ? '<div class="callout err" style="margin-top:10px"><b>Riesgo de liquidación (' + stressLiqHits.length + '):</b> ' + stressLiqHits.map(x => esc(x.instr)).join(', ') + '</div>' : '<p class="note">Ningún derivado registrado alcanza su precio de liquidación en este escenario.</p>')
       + '</section></div>';
   } else if (invTab === 'ops') {
@@ -253,20 +358,20 @@ function vInvDesktop() {
   const fmtSigned = v => (v > 0 ? '+' : '') + nf(v, 0) + ' €';
   const tabBar = '<div class="row" style="margin:0 0 14px;justify-content:space-between">'
     + '<div class="seg"><button type="button" data-invtab="spot" aria-pressed="' + (invTab === 'spot') + '">Cartera Spot (' + list.length + ')</button><button type="button" data-invtab="derivs" aria-pressed="' + (invTab === 'derivs') + '">Derivados y Márgenes (' + ders.length + ')</button><button type="button" data-invtab="ops" aria-pressed="' + (invTab === 'ops') + '">Operaciones (' + ops.length + ')</button><button type="button" data-invtab="radar" aria-pressed="' + (invTab === 'radar') + '">Radar y Noticias</button></div>'
-    + '<div class="row" style="gap:8px"><span class="faint" style="font-size:12px;font-weight:600">Simular Spot+Der:</span><div class="seg"><button type="button" data-scenario="-10" aria-pressed="' + (marketShock === -10) + '">−10%</button><button type="button" data-scenario="10" aria-pressed="' + (marketShock === 10) + '">+10%</button><button type="button" data-scenario="20" aria-pressed="' + (marketShock === 20) + '">+20%</button></div><span class="pill ' + cls(stressImpact) + '" title="Spot ' + esc(fmtSigned(spotShock)) + ' · Derivados ' + esc(fmtSigned(derivShock)) + '">' + money(stressImpact, { sign: true, d: 0 }) + '</span></div>'
+    + '<div class="row" style="gap:8px"><span class="faint" style="font-size:12px;font-weight:600">Simular cartera:</span><div class="seg">' + [-10, 10, 20].map(n => '<button type="button" class="' + (marketShock === n ? 'on' : '') + '" data-scenario="' + n + '" aria-pressed="' + (marketShock === n) + '">' + (n > 0 ? '+' : '−') + Math.abs(n) + '%</button>').join('') + '</div><span class="pill ' + cls(stressImpact) + '" title="Spot ' + esc(fmtSigned(spotShock)) + ' · Derivados ' + esc(fmtSigned(derivShock)) + '">' + money(stressImpact, { sign: true, d: 0 }) + '</span></div>'
     + '</div>';
 
   const marketHeader = invTab === 'spot'
     ? '<div class="market-terminal" style="margin-bottom:18px">'
       + marketChartDeck(selectedSymbol)
-      + '<aside class="panel"><div class="module-title"><b>Seguimiento (Watchlist)</b>' + btn('+ Ticker', 'data-act="add-watch"', 'ghost small') + '</div>'
+      + '<aside class="panel"><div class="module-title"><b>Seguimiento</b>' + btn('+ Activo', 'data-act="add-watch"', 'ghost small') + '</div>'
       + '<div class="watchlist-panel">' + wl.map(s => {
         const p = state.prices[s], eur = priceEUR(s);
         return '<button type="button" class="wl-row" data-select-sym="' + esc(s) + '" aria-current="' + (selectedSymbol === s) + '"><i style="background:' + assetColor(s) + '">' + esc(s.slice(0, 4)) + '</i><span><b>' + esc(s) + '</b><small>' + esc(state.assets[s]?.name || { USDT: 'Tether (USDT)', USDC: 'USD Coin' }[s] || CLASS_NAMES[assetCls(s)] || '') + '</small></span><span class="r"><b data-live-price="' + esc(s) + '">' + (eur ? money(eur, { d: eur < 1 ? 4 : 2 }) : '—') + '</b><small data-live-chg="' + esc(s) + '" class="' + cls(p?.chg) + '">' + (p?.chg != null ? pct(p.chg) : '') + '</small></span></button>';
       }).join('') + '</div></aside></div>'
     : '';
 
-  return head('Mercados y Derivados', 'Cartera total: ' + money(total, { d: 0 }) + ' · ' + money(day, { sign: true, d: 0 }) + ' hoy · ' + (ders.length ? dersLbl + ' (' + money(ds.totalPnlEUR, { sign: true }) + ')' : 'sin derivados abiertos'), acts)
+  return head('Mercados y Derivados', 'Cartera total: ' + money(total, { d: 0 }) + ' · ' + money(day, { sign: true, d: 0 }) + ' hoy · ' + (ders.length ? dersLbl + ' (' + money(ds.equityEUR, { d: 0 }) + ' · PyG ' + money(ds.totalPnlEUR, { sign: true, d: 0 }) + ')' : 'sin derivados abiertos'), acts)
     + (invTab === 'spot' ? marketHeader + tabBar : tabBar)
     + tabBody;
 }
@@ -303,7 +408,7 @@ function vMovsDesktop() {
     + (filt.m ? (movView === 'cal' ? spendCalendarHTML(filt.m) : svgDays(filt.m) + '<p class="note">' + (filt.day ? 'Día ' + (+filt.day.slice(8)) + ' seleccionado · toca otra vez para quitarlo' : 'Toca una barra para filtrar por día') + '</p>') : svgMonths(months.slice(0, 12).reverse()))
     + '</section>'
     + '<aside class="panel span4"><div class="module-title"><b>Por categoría</b></div>' + (cats.length ? cats.slice(0, 5).map(([k, v]) => catRow(k, v, maxCat, exp, 'data-fcat="' + (filt.cat === k ? '' : k) + '" style="' + (filt.cat && filt.cat !== k ? 'opacity:.45' : '') + '"')).join('') : '<p class="muted">Sin gastos.</p>')
-    + (recs.length ? '<div class="label">Gastos recurrentes</div>' + recs.map(r => { const rc = catById(r.cat); return '<div class="upcoming-line" style="grid-template-columns:32px minmax(0,1fr) auto"><span style="width:32px;height:32px;border-radius:9px;background:var(' + rc.color + ');color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:750">' + esc(catInitials(rc)) + '</span><span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r.name) + '</b><small>' + esc(rc.name) + ' · ' + r.months + ' meses</small></span><strong>' + money(-r.amount, { d: 0 }) + '</strong></div>'; }).join('') : '') + '</aside>'
+    + (recs.length ? '<div class="label">Gastos recurrentes</div>' + recs.map(r => { const rc = catById(r.cat); return '<div class="upcoming-line" style="grid-template-columns:32px minmax(0,1fr) auto"><span style="width:32px;height:32px;border-radius:9px;background:var(' + rc.color + ');color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:750">' + esc(catInitials(rc)) + '</span><span style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(fmtMerchant(r.name)) + '</b><small>' + esc(rc.name) + ' · ' + r.months + ' meses</small></span><strong>' + money(-r.amount, { d: 0 }) + '</strong></div>'; }).join('') : '') + '</aside>'
     + '<section class="panel span12"><div class="row" style="gap:10px;margin-bottom:12px"><div class="search" style="flex:1;min-width:220px">' + ico('search') + '<input type="search" id="f-q" value="' + esc(filt.q) + '" placeholder="Buscar comercio, persona, concepto…" aria-label="Buscar"></div>'
     + (state.accounts.filter(a => a.kind === 'bank' || a.kind === 'cash').length > 1 ? '<select id="f-acc" aria-label="Filtrar por cuenta" style="width:auto;min-width:165px"><option value="">Todas las cuentas</option>' + state.accounts.filter(a => a.kind === 'bank' || a.kind === 'cash').map(a => '<option value="' + a.id + '"' + (filt.acc === a.id ? ' selected' : '') + '>' + esc(a.name) + '</option>').join('') + '</select>' : '')
     + '<div class="seg">' + tseg.map(([k, n]) => '<button type="button" data-ftype="' + k + '" aria-pressed="' + (filt.type === k) + '">' + n + '</button>').join('') + '</div></div>'
