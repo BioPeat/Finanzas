@@ -1,6 +1,6 @@
 // ===== Estado, almacenamiento local, sincronización cifrada y utilidades =====
 "use strict";
-const APP_VERSION = 'v12', APP_REVISION = 9, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
+const APP_VERSION = 'v12', APP_REVISION = 10, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
 
 const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];

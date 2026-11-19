@@ -30,7 +30,9 @@ async function getJSON(url, init = {}) {
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) { }
     if (!r.ok) {
       const msg = (j && (j.msg || j.message || j.retMsg || j.error_description || (typeof j.error === 'string' && j.error) || (j.error && j.error.message) || (Array.isArray(j.error) && j.error.join(', ')))) || ('HTTP ' + r.status);
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.status = r.status;
+      throw err;
     }
     return j;
   } finally { clearTimeout(tm); }
@@ -431,26 +433,39 @@ function aiPrompt(payload) {
   const tasks = { brief: 'Da un parte operativo de hoy: hechos, 3 prioridades y 3 preguntas.', spend: 'Analiza ritmo de gasto, categorías, recurrencias y anomalías. Propón comprobaciones concretas.', portfolio: 'Analiza concentración, liquidez, cambio diario, derivados/márgenes y riesgos. No des órdenes de compra o venta; formula escenarios y preguntas.', plan: 'Propón un escenario mensual prudente con caso base, adverso y holgado.', risk: 'Ordena los riesgos a 30 días por impacto y urgencia; distingue liquidez, concentración, liquidación de derivados, datos y gastos.', quality: 'Audita la calidad de los datos: precios, histórico, costes FIFO, copias y elementos que impiden conclusiones fiables.' };
   return 'Eres el copiloto financiero privado de una app de finanzas personales en España. ' + (tasks[payload.kind] || tasks.brief) + ' Separa HECHOS, INTERPRETACIÓN, ACCIONES y DATOS QUE FALTAN. No inventes precios, rentabilidades ni normativa. No prometas beneficios. Recuerda brevemente que no es asesoramiento financiero ni fiscal. Datos agregados JSON:\n' + JSON.stringify(payload);
 }
+const GEMINI_COOLDOWN = new Map();
 async function callAIProvider(env, { provider, model, system, contents, maxTokens = 1800, temperature = 0.25 }) {
   const available = aiProviders(env);
   if (provider === 'auto' || !provider) provider = ['gemini', 'openai', 'anthropic', 'custom'].find(x => available[x]);
   if (!provider || !available[provider]) throw new Error('El proveedor elegido no está configurado en los secretos del Worker.');
   let text = '';
   if (provider === 'gemini') {
-    const candidates = [...new Set([model, env.GEMINI_MODEL, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash-lite'].filter(Boolean))];
+    const candidates = [...new Set([model, env.GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite'].filter(Boolean))];
+    const now = Date.now();
+    const healthy = candidates.filter(m => (GEMINI_COOLDOWN.get(m) || 0) <= now);
+    const order = healthy.length ? [...healthy, ...candidates.filter(m => !healthy.includes(m))] : candidates;
+    const hasMedia = contents.some(c => (c.parts || []).some(p => p.inlineData));
+    const fastMs = (hasMedia || maxTokens > 2000) ? 14000 : 7000;
+    const finalMs = (hasMedia || maxTokens > 2000) ? 45000 : 35000;
     const body = { contents, generationConfig: { temperature, maxOutputTokens: maxTokens } };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
     let lastErr;
-    for (const m of candidates) {
+    for (let i = 0; i < order.length; i++) {
+      const m = order[i];
       try {
-        const r = await getJSON('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent?key=' + encodeURIComponent(env.GEMINI_API_KEY), { method: 'POST', timeout: 45000, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const r = await getJSON('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent?key=' + encodeURIComponent(env.GEMINI_API_KEY), { method: 'POST', timeout: i < order.length - 1 ? fastMs : finalMs, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         text = r.candidates && r.candidates[0] && r.candidates[0].content && r.candidates[0].content.parts.map(x => x.text || '').join('');
+        GEMINI_COOLDOWN.delete(m);
         model = m;
         lastErr = null;
         break;
       } catch (e) {
         lastErr = e;
-        if (!/no longer available|not found|high demand|overloaded|unavailable|503|404/i.test(String(e && e.message || e))) throw e;
+        const st = e && e.status, em = String(e && e.message || e);
+        const retryable = (e && e.name === 'AbortError') || [404, 408, 429, 500, 502, 503, 504].includes(st) || /no longer available|not found|high demand|overloaded|unavailable|quota|rate.?limit|resource.?exhausted|too many|capacity|timeout|abort|429|503|404/i.test(em);
+        if (!retryable) throw e;
+        const ttl = (st === 404 || /no longer available|not found/i.test(em)) ? 3600000 : (st === 429 || /quota|resource.?exhausted|rate.?limit|too many/i.test(em)) ? 900000 : 180000;
+        GEMINI_COOLDOWN.set(m, Date.now() + ttl);
       }
     }
     if (lastErr) throw lastErr;

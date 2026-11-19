@@ -47,4 +47,61 @@ r = await call('/bank/aspsps?country=ES'); assert.equal(r.status, 500);
 r = await call('/history?exchange=otro'); assert.equal(r.status, 500);
 r = await call('/onchain?chain=eth'); assert.equal(r.status, 500);
 
+// Fast failover & cooldown tests for Gemini
+const origFetch = globalThis.fetch;
+try {
+  const envGemini = { ...env, GEMINI_API_KEY: 'AIzaTestKey' };
+  const tried1 = [], tried2 = [], tried3 = [], tried4 = [];
+  globalThis.fetch = async (url) => {
+    const m = String(url).match(/models\/([^:]+):/)?.[1] || '';
+    tried1.push(m);
+    if (m === 'gemini-3.8-flash') return new Response(JSON.stringify({ error: { message: 'This model is currently experiencing high demand.' } }), { status: 503 });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'OK_FAST_FALLBACK' }] } }] }), { status: 200 });
+  };
+  r = await call('/ai', { method: 'POST', body: JSON.stringify({ mode: 'chat', provider: 'gemini', messages: [{ role: 'user', text: 'Hola' }], context: {} }) });
+  assert.equal(r.status, 500); // smoke check env without GEMINI_API_KEY still 500
+
+  r = await worker.fetch(new Request('https://worker.test/ai', { method: 'POST', headers: { Origin: envGemini.ALLOWED_ORIGIN, 'X-Caudal-Token': envGemini.TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'chat', provider: 'gemini', messages: [{ role: 'user', text: 'Hola' }], context: {} }) }), envGemini);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.deepEqual(tried1, ['gemini-3.8-flash', 'gemini-3.5-flash-lite']);
+  assert.equal(j.model, 'gemini-3.5-flash-lite');
+
+  globalThis.fetch = async (url) => {
+    const m = String(url).match(/models\/([^:]+):/)?.[1] || '';
+    tried2.push(m);
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'OK_COOLDOWN' }] } }] }), { status: 200 });
+  };
+  r = await worker.fetch(new Request('https://worker.test/ai', { method: 'POST', headers: { Origin: envGemini.ALLOWED_ORIGIN, 'X-Caudal-Token': envGemini.TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'chat', provider: 'gemini', messages: [{ role: 'user', text: 'Hola 2' }], context: {} }) }), envGemini);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.deepEqual(tried2, ['gemini-3.5-flash-lite']);
+  assert.equal(j.model, 'gemini-3.5-flash-lite');
+
+  globalThis.fetch = async (url) => {
+    const m = String(url).match(/models\/([^:]+):/)?.[1] || '';
+    tried3.push(m);
+    if (m === 'gemini-custom-429') return new Response(JSON.stringify({ error: { message: 'RESOURCE_EXHAUSTED' } }), { status: 429 });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'OK_429' }] } }] }), { status: 200 });
+  };
+  r = await worker.fetch(new Request('https://worker.test/ai', { method: 'POST', headers: { Origin: envGemini.ALLOWED_ORIGIN, 'X-Caudal-Token': envGemini.TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'chat', provider: 'gemini', model: 'gemini-custom-429', messages: [{ role: 'user', text: 'Hola 3' }], context: {} }) }), envGemini);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.deepEqual(tried3, ['gemini-custom-429', 'gemini-3.5-flash-lite']);
+  assert.equal(j.model, 'gemini-3.5-flash-lite');
+
+  globalThis.fetch = async (url) => {
+    const m = String(url).match(/models\/([^:]+):/)?.[1] || '';
+    tried4.push(m);
+    return new Response(JSON.stringify({ error: { message: 'API key not valid. Please pass a valid API key.' } }), { status: 400 });
+  };
+  r = await worker.fetch(new Request('https://worker.test/ai', { method: 'POST', headers: { Origin: envGemini.ALLOWED_ORIGIN, 'X-Caudal-Token': envGemini.TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'chat', provider: 'gemini', messages: [{ role: 'user', text: 'Hola 4' }], context: {} }) }), envGemini);
+  j = await r.json();
+  assert.equal(r.status, 500);
+  assert.deepEqual(tried4, ['gemini-3.5-flash-lite']);
+  assert.match(j.error, /API key not valid/);
+} finally {
+  globalThis.fetch = origFetch;
+}
+
 console.log('Worker smoke: TODO OK');

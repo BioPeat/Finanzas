@@ -16,7 +16,7 @@ PWA privada y local-first para controlar desde un mismo sitio todas tus cuentas 
 
 ### Copiloto IA (Gemini gratuito)
 - `GEMINI_API_KEY`: clave gratuita de [Google AI Studio](https://aistudio.google.com).
-- `GEMINI_MODEL` (opcional, por defecto `gemini-3.5-flash-lite`, con respaldo automático).
+- `GEMINI_MODEL` (opcional, por defecto intenta `gemini-3.8-flash` y cambia en segundos con enfriamiento automático a `gemini-3.5-flash-lite` si está saturado o sin cuota).
 
 ### Exchanges (siempre permisos de SOLO LECTURA)
 - **KuCoin (Spot + Futuros)**: `KUCOIN_KEY`, `KUCOIN_SECRET`, `KUCOIN_PASSPHRASE` (opcionales `KUCOIN_FUTURES_*` si usas claves separadas).
