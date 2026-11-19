@@ -364,7 +364,15 @@ dialog::backdrop{background:rgba(4,8,18,.65);backdrop-filter:blur(4px)}
 .toast button{background:none;border:0;color:var(--brand2);font-weight:750;cursor:pointer}
 
 /* ===== Controles específicos Móvil vs PC ===== */
-.topbar,.tabs,.mobile-fab,.drawer,.drawer-scrim,.mobile-home{display:none}
+.topbar,.tabs,.mobile-fab,.drawer,.drawer-scrim,.mobile-home,.market-tabs{display:none}
+body[data-view=copiloto] .mobile-fab{display:none!important}
+.cmd-list{display:grid;gap:4px;margin-top:10px;max-height:55vh;overflow-y:auto}
+.cmd-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:11px;background:none;color:inherit;text-align:left;cursor:pointer}
+.cmd-item:hover{background:var(--panel2)}
+.cmd-item b{font-weight:620;font-size:13.5px}
+.cmd-item small{color:var(--ink3);font-size:12px}
+.ai-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:64;opacity:0;pointer-events:none;transition:opacity .2s}
+.ai-drawer-backdrop.open{opacity:1;pointer-events:auto}
 .m-quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
 .m-qbtn{border:0;background:none;color:inherit;display:grid;justify-items:center;gap:6px;cursor:pointer;padding:4px 0}
 .m-qbtn span{width:48px;height:48px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);display:grid;place-items:center;color:var(--ink);transition:transform .12s,background .12s}
