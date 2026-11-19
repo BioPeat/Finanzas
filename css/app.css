@@ -454,7 +454,7 @@ body[data-view=resumen] .mobile-fab,body[data-view=inversiones] .mobile-fab,body
   .mobile-home{display:grid;gap:14px}
   .mobile-hero{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px 14px 14px;text-align:center}
   .mobile-hero .position-eyebrow{justify-content:center}
-  .mobile-hero .position-value{font-size:clamp(28px,9.2vw,38px);margin-top:6px}
+  .mobile-hero .position-value{font-size:clamp(37px,9.8vw,40px);margin-top:6px}
   .mobile-hero .position-status{justify-content:center}
   .mobile-hero .ranges{display:flex;width:100%;margin-top:8px}
   .mobile-hero .ranges button{flex:1;min-height:44px;padding:4px 2px}

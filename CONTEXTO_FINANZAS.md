@@ -14,7 +14,7 @@ PWA privada y local-first para unificar bancos, exchanges (KuCoin, Kraken, Binan
 
 ## Diseño v12 (PC Terminal + Móvil Táctil)
 - **Escritorio (`>= 1024px`)**: barra lateral fija, barra superior con precios en directo (WebSocket) y búsqueda rápida (`Ctrl+K`), bento de 12 columnas en Inicio, terminal dividido de Mercados (velas OHLCV / TradingView + watchlist + pestañas Spot/Derivados/Operaciones/Radar), detalle por cuenta y panel lateral deslizable de IA.
-- **Móvil (`< 1024px`)**: experiencia táctil independiente inspirada en Revolut/Santander/TradingView móvil con hero centrado, 4 acciones rápidas circulares, carrusel de tarjetas por entidad, barra inferior de 5 pestañas (`Inicio`, `Gastos`, `Mercados`, `Cuentas`, `IA`), menú deslizable izquierdo y modales tipo hoja inferior.
+- **Móvil (`< 1024px`)**: experiencia táctil independiente inspirada en Revolut/Santander/TradingView móvil con hero centrado, 4 acciones rápidas circulares, carrusel de tarjetas por entidad, barra inferior de 5 pestañas (`Inicio`, `Movimientos`, `Mercados`, `Cuentas`, `Copiloto`), menú deslizable izquierdo y modales tipo hoja inferior.
 
 ## Conexiones y APIs (solo lectura y coste 0 €)
 - **Bancos**: Open Banking PSD2 gratuito via Enable Banking (`ENABLE_BANKING_APP_ID` + `ENABLE_BANKING_PRIVATE_KEY`) + importador Santander/Revolut/BBVA/OFX/QIF + extractor multimodal con Gemini IA.

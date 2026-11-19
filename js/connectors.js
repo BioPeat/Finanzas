@@ -106,7 +106,7 @@ async function openBankConnectModal() {
         + '<div class="form"><label class="f">País<select id="eb-country"><option value="ES" selected>España (ES)</option><option value="LT">Lituania · Revolut (LT)</option><option value="DE">Alemania (DE)</option><option value="IE">Irlanda (IE)</option></select></label><label class="f">Filtrar banco<input type="search" id="eb-filter" placeholder="Santander, Revolut, BBVA…"></label></div>'
         + '<div id="eb-list" style="margin-top:12px"><p class="muted">Cargando bancos autorizados…</p></div>');
   if (hasEB) {
-    const load = async () => {
+    const fetchBanks = async () => {
       try {
         const c = val('eb-country') || 'ES';
         const r = await api('/bank/aspsps?country=' + encodeURIComponent(c));
@@ -123,8 +123,8 @@ async function openBankConnectModal() {
         paintList();
       } catch (e) { $('eb-list').innerHTML = '<div class="callout err">' + esc(e.message) + '</div>'; }
     };
-    $('eb-country').onchange = load;
-    load();
+    $('eb-country').onchange = fetchBanks;
+    fetchBanks();
   }
 }
 
