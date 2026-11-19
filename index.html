@@ -18,7 +18,7 @@
 <body>
 <div class="app" id="app-root">
   <aside class="side" aria-label="Navegación">
-    <button class="logo" type="button" data-go="resumen"><img src="icon-192.png" alt="">Finanzas <span class="badge" id="ver-badge">v12</span></button>
+    <button class="logo" type="button" data-go="resumen"><img src="icon-192.png" alt="">Finanzas</button>
     <div id="nav-side"></div>
     <div class="side-foot">
       <button class="sync" type="button" data-act="sync-now" id="sync-side"></button>
@@ -43,25 +43,25 @@
     </header>
     <main id="main"></main>
   </div>
-  <button class="mobile-fab" type="button" data-act="quick" aria-label="Añadir movimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-  <nav class="tabs" id="nav-tabs" aria-label="Secciones principales"></nav>
-  <div class="drawer-scrim" id="drawer-scrim" data-act="drawer-close"></div>
-  <aside class="drawer" id="mobile-drawer" aria-label="Menú" aria-hidden="true">
-    <div class="drawer-head">
-      <img src="icon-192.png" alt="">
-      <span><b>Finanzas</b><small class="faint" style="display:block" id="ver-drawer"></small></span>
-      <button class="iconbtn" type="button" data-act="drawer-close" aria-label="Cerrar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-    </div>
-    <div class="drawer-nav" id="nav-drawer"></div>
-    <div class="drawer-foot">
-      <button class="sync" type="button" data-act="sync-now" id="sync-drawer"></button>
-      <div class="quickrow">
-        <button class="btn" type="button" data-act="import">Importar</button>
-        <button class="btn primary" type="button" data-act="quick">Apuntar</button>
-      </div>
-    </div>
-  </aside>
 </div>
+<button class="mobile-fab" type="button" data-act="quick" aria-label="Añadir movimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+<nav class="tabs" id="nav-tabs" aria-label="Secciones principales"></nav>
+<div class="drawer-scrim" id="drawer-scrim" data-act="drawer-close"></div>
+<aside class="drawer" id="mobile-drawer" aria-label="Menú" aria-hidden="true">
+  <div class="drawer-head">
+    <img src="icon-192.png" alt="">
+    <span><b>Finanzas</b><small class="faint" style="display:block" id="ver-drawer"></small></span>
+    <button class="iconbtn" type="button" data-act="drawer-close" aria-label="Cerrar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="drawer-nav" id="nav-drawer"></div>
+  <div class="drawer-foot">
+    <button class="sync" type="button" data-act="sync-now" id="sync-drawer"></button>
+    <div class="quickrow">
+      <button class="btn" type="button" data-act="import">Importar</button>
+      <button class="btn primary" type="button" data-act="quick">Apuntar</button>
+    </div>
+  </div>
+</aside>
 <div class="ai-drawer-backdrop" id="ai-drawer-backdrop" data-act="ai-drawer-close"></div>
 <aside class="ai-drawer" id="ai-drawer" aria-label="Copiloto IA" aria-hidden="true"></aside>
 <dialog id="modal" aria-labelledby="modal-title"><div class="dlg-h"><h3 id="modal-title"></h3><button class="btn ghost small" type="button" id="modal-close" aria-label="Cerrar">Cerrar</button></div><div class="dlg-b" id="modal-body"></div></dialog>

@@ -2,13 +2,13 @@
   "id": "finanzas-app",
   "name": "Finanzas",
   "short_name": "Finanzas",
-  "description": "Posición financiera privada: cuentas, activos, inversiones, cambios y decisiones asistidas.",
+  "description": "Centro de control financiero en directo: bancos, KuCoin, Kraken, derivados, gráficos en vivo y Copiloto IA.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0a0e12",
-  "theme_color": "#0a0e12",
+  "background_color": "#080b10",
+  "theme_color": "#080b10",
   "categories": [
     "finance",
     "productivity"
@@ -47,7 +47,7 @@
       ]
     },
     {
-      "name": "Mercados",
+      "name": "Mercados y Derivados",
       "short_name": "Mercados",
       "url": "./#inversiones",
       "icons": [
@@ -58,7 +58,7 @@
       ]
     },
     {
-      "name": "Copiloto",
+      "name": "Copiloto IA",
       "short_name": "Copiloto",
       "url": "./#copiloto",
       "icons": [

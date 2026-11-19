@@ -215,7 +215,9 @@ function reliableHistory(points) {
 function netSeries(days) {
   const since = addDays(today(), -days), snapDates = Object.keys(state.snaps).sort(), nw = netWorth();
   if (snapDates.length >= 2) {
-    const pts = snapDates.filter(d => d >= since).map(d => [d, +state.snaps[d].total || 0]);
+    const anchor = snapDates.filter(d => d < since).at(-1);
+    const dates = [...(anchor ? [anchor] : []), ...snapDates.filter(d => d >= since)];
+    const pts = dates.map(d => [d, +state.snaps[d].total || 0]);
     return { pts: reliableHistory(pts), src: 'snap' };
   }
   const b = bankHistory(days), bankNow = sum(nw.rows.filter(r => r.bank).map(r => r.eur)), nonBank = nw.total - bankNow;
@@ -223,11 +225,24 @@ function netSeries(days) {
   return { pts: reliableHistory(pts), src: 'bank' };
 }
 function changeWindow(days) {
-  const pts = netSeries(days + 2).pts; if (pts.length < 2) return null;
-  const end = pts.at(-1)[1], target = addDays(today(), -days); let base = pts[0][1];
-  for (const p of pts) if (p[0] <= target) base = p[1]; else break;
+  const pts = netSeries(3650).pts; if (pts.length < 2) return null;
+  const endPt = pts.at(-1), end = endPt[1], endMs = Date.parse(endPt[0]), targetMs = endMs - days * 864e5;
+  let best = null, bestDiff = Infinity;
+  for (const p of pts.slice(0, -1)) {
+    const diff = Math.abs(Date.parse(p[0]) - targetMs);
+    if (diff < bestDiff) { bestDiff = diff; best = p; }
+  }
+  const maxGapDays = days <= 1 ? 2 : Math.max(4, Math.round(days * 0.5));
+  if (!best || bestDiff / 864e5 > maxGapDays) {
+    if (days <= 1) {
+      const invDay = investmentSummary().day;
+      if (Math.abs(invDay) > 0.01 && Math.abs(end) > 1) return { value: invDay, pct: invDay / Math.abs(end - invDay) * 100, from: today(), approx: true };
+    }
+    return null;
+  }
+  const base = best[1];
   if (!Number.isFinite(base) || Math.abs(base) < 1) return null;
-  return { value: end - base, pct: (end - base) / Math.abs(base) * 100, from: pts[0][0] };
+  return { value: end - base, pct: (end - base) / Math.abs(base) * 100, from: best[0] };
 }
 function invSeries(days) {
   const from = addDays(today(), -days);
@@ -260,9 +275,10 @@ function monthTotals(m) {
   return { inc, exp, save: inc - exp, rate: inc ? (inc - exp) / inc * 100 : null, byCat, n: t.length };
 }
 function lastMonths(n) { const m = monthKey(today()), out = []; for (let i = n - 1; i >= 0; i--) out.push(monthAdd(m, -i)); return out; }
+const REC_EXCLUDE = new Set(['super', 'restaurantes', 'combustible', 'compras', 'movilidad', 'efectivo', 'otros']);
 function recurring() {
   const by = {};
-  for (const t of state.tx) if (t.amount < 0 && !isInternal(t)) { const k = merchantOf(t.desc); (by[k] = by[k] || []).push(t); }
+  for (const t of state.tx) if (t.amount < 0 && !isInternal(t) && !REC_EXCLUDE.has(t.cat)) { const k = merchantOf(t.desc); (by[k] = by[k] || []).push(t); }
   const out = [];
   for (const [k, ts] of Object.entries(by)) {
     const months = new Set(ts.map(t => monthKey(t.date))); if (months.size < 2) continue;
@@ -273,8 +289,12 @@ function recurring() {
 }
 const isLiquid = r => r.bank || r.cls === 'cash' || r.cls === 'stable';
 function liquidity() { return sum(netWorth().rows.filter(isLiquid).map(r => r.eur)); }
-function avgMonthlyExpense() { const ms = lastMonths(4).slice(0, 3).map(monthTotals).filter(t => t.n); return ms.length ? sum(ms.map(t => t.exp)) / ms.length : monthTotals(monthKey(today())).exp; }
-function cushion() { const e = avgMonthlyExpense(); return e > 0 ? liquidity() / e : null; }
+function avgMonthlyExpense() {
+  const closed = lastMonths(4).slice(0, 3).map(monthTotals).filter(t => t.n >= 3 && t.exp > 0);
+  const ms = closed.length >= 2 ? closed : lastMonths(3).map(monthTotals).filter(t => t.exp > 0);
+  return ms.length ? sum(ms.map(t => t.exp)) / ms.length : monthTotals(monthKey(today())).exp;
+}
+function cushion() { const e = avgMonthlyExpense(), bankCash = sum(netWorth().rows.filter(r => r.bank).map(r => r.eur)); return e > 0 ? bankCash / e : null; }
 function pace() {
   const t = today(), d = +t.slice(8), m = monthKey(t), pm = monthAdd(m, -1), lim = pm + '-' + String(d).padStart(2, '0');
   const spent = (mm, until) => -sum(state.tx.filter(x => monthKey(x.date) === mm && x.amount < 0 && !isInternal(x) && (!until || x.date <= until)).map(x => x.amount));
@@ -305,7 +325,13 @@ function forecast() {
   const salary = !paid && lastNom ? lastNom.amount : 0;
   return { bal, fixed, variable: daily * left, salary, end: bal - fixed - daily * left + salary, left };
 }
-function safeToSpend() { const f = forecast(), floor = +state.settings.lowBal || 0, left = Math.max(1, Math.round(f.left) + 1); return { per: Math.max(0, (f.bal + f.salary - f.fixed - floor) / left), left, floor, f }; }
+function safeToSpend() {
+  const f = forecast(), floor = +state.settings.lowBal || 0, left = Math.max(1, Math.round(f.left) + 1);
+  const m = monthKey(today()), mt = monthTotals(m), refInc = mt.inc || f.salary || 0;
+  const monthRoom = refInc > 0 ? Math.max(0, refInc - mt.exp - f.fixed) : Math.max(0, avgMonthlyExpense() - mt.exp - f.fixed);
+  const capByBal = Math.max(0, f.bal + f.salary - f.fixed - floor);
+  return { per: Math.min(monthRoom, capByBal) / left, left, floor, f };
+}
 function topMerchants(m, n = 5) { const by = {}; for (const x of state.tx) if (monthKey(x.date) === m && x.amount < 0 && !isInternal(x)) { const k = merchantOf(x.desc); by[k] = by[k] || { name: k, total: 0, n: 0, cat: x.cat }; by[k].total -= x.amount; by[k].n++; } return Object.values(by).sort((a, b) => b.total - a.total).slice(0, n); }
 function dailySpend(m) { const out = {}; for (const x of state.tx) if (monthKey(x.date) === m && x.amount < 0 && !isInternal(x)) out[x.date] = (out[x.date] || 0) - x.amount; return out; }
 function goalSaved(g) { if (g.acc) { const a = accById(g.acc); if (a) return sum(positionRows().filter(r => r.acc === a.id).map(r => r.eur)); } return +g.saved || 0; }

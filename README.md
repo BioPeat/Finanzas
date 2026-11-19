@@ -1,40 +1,40 @@
-# Finanzas v7 · Posición financiera
+# Finanzas v12 · Centro de Control Financiero
 
-PWA privada y local-first para ver patrimonio, cuentas, movimientos, inversiones, riesgo, fiscalidad orientativa y análisis asistido. El navegador conserva los datos; el Worker gratuito añade sincronización cifrada, precios, exchanges, mercado e IA opcional.
+PWA privada y local-first para controlar desde un mismo sitio todas tus cuentas bancarias (Santander, Revolut y cualquier banco), exchanges (KuCoin, Kraken, Binance, OKX, Bybit), brókeres, wallets on-chain, derivados en vivo, gráficos interactivos, fiscalidad FIFO en España y Copiloto IA con Gemini.
 
-## Publicar
-1. Copia **todo el contenido** de `1_CODIGO_GITHUB` en la raíz del repositorio y reemplaza.
-2. GitHub Desktop: commit `Finanzas v7 final` → **Push origin**.
-3. Espera el visto verde de **Prueba Finanzas** en Actions.
-4. Cloudflare: reemplaza el código del Worker por `worker.js` y pulsa **Deploy**. Debe responder **w5**.
+## Cómo publicar y actualizar (1 solo commit)
+1. En **GitHub Desktop**: revisa los cambios → escribe un mensaje (ej. `Finanzas v12`) → **Commit to main** → **Push origin**.
+2. Espera el visto verde de **Prueba Finanzas** en la pestaña **Actions** de GitHub.
+3. En **Cloudflare Workers & Pages → tu Worker → Edit code**: pega el archivo `worker.js` completo y pulsa **Deploy** (debe responder **w6**).
 
-## Contratos que no se cambian
-`caudal_v1`, `caudal:`, `X-Caudal-Token` y el binding KV `CAUDAL`. El `id` del manifest continúa siendo `finanzas-app`.
+## Secretos del Worker en Cloudflare (todos gratuitos)
 
-## Worker mínimo
-- Secret `TOKEN` de 20 caracteres o más.
-- Secret `ALLOWED_ORIGIN` igual al origen de GitHub Pages, por ejemplo `https://usuario.github.io`, sin barra final.
+### Obligatorios
+- `TOKEN`: contraseña de 20 o más caracteres (debe coincidir con Ajustes → Código TOKEN).
+- `ALLOWED_ORIGIN`: origen exacto de tu GitHub Pages sin barra final (ej. `https://tu-usuario.github.io`).
 - Binding KV llamado exactamente `CAUDAL`.
 
-### IA opcional
-- Gemini: `GEMINI_API_KEY`; modelo opcional `GEMINI_MODEL` (por defecto `gemini-2.5-flash`). La clave se crea en Google AI Studio; una suscripción Gemini Pro no sustituye la clave de API.
-- OpenAI: `OPENAI_API_KEY`, opcional `OPENAI_MODEL`.
-- Anthropic: `ANTHROPIC_API_KEY`, opcional `ANTHROPIC_MODEL`.
-- Compatible con OpenAI: `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`.
-- El modo Local funciona sin clave y no envía datos.
+### Copiloto IA (Gemini gratuito)
+- `GEMINI_API_KEY`: clave gratuita de [Google AI Studio](https://aistudio.google.com).
+- `GEMINI_MODEL` (opcional, por defecto `gemini-2.5-flash`).
 
-### Exchanges opcionales, siempre solo lectura
-- Binance: `BINANCE_KEY`, `BINANCE_SECRET`.
-- Kraken: `KRAKEN_KEY`, `KRAKEN_SECRET`.
-- KuCoin: `KUCOIN_KEY`, `KUCOIN_SECRET`, `KUCOIN_PASSPHRASE`.
-- OKX: `OKX_KEY`, `OKX_SECRET`, `OKX_PASSPHRASE`.
-- Bybit: `BYBIT_KEY`, `BYBIT_SECRET`; `BYBIT_BASE` si corresponde.
+### Exchanges (siempre permisos de SOLO LECTURA)
+- **KuCoin (Spot + Futuros)**: `KUCOIN_KEY`, `KUCOIN_SECRET`, `KUCOIN_PASSPHRASE` (opcionales `KUCOIN_FUTURES_*` si usas claves separadas).
+- **Kraken Spot**: `KRAKEN_KEY`, `KRAKEN_SECRET`.
+- **Kraken Futures**: `KRAKEN_FUTURES_KEY`, `KRAKEN_FUTURES_SECRET`.
+- **Binance**: `BINANCE_KEY`, `BINANCE_SECRET`.
+- **OKX**: `OKX_KEY`, `OKX_SECRET`, `OKX_PASSPHRASE`.
+- **Bybit**: `BYBIT_KEY`, `BYBIT_SECRET`.
 
-Nunca habilites operar, transferir ni retirar.
+### Open Banking PSD2 gratuito (opcional, para Santander/bancos automáticos)
+- `ENABLE_BANKING_APP_ID`: ID de aplicación en [Enable Banking](https://enablebanking.com) (uso personal).
+- `ENABLE_BANKING_PRIVATE_KEY`: clave privada RSA en formato PEM PKCS#8.
 
-## Pruebas
+## Contratos estables
+`caudal_v1`, `caudal:`, `X-Caudal-Token`, KV `CAUDAL` y `id` `finanzas-app` se mantienen intactos para conservar tus datos.
+
+## Pruebas automáticas
 ```bash
 node tests/worker_smoke.mjs
 python tests/smoke.py
 ```
-El navegador se prueba en móvil y escritorio; el Worker se prueba sin claves ni red externa.

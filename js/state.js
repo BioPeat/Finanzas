@@ -75,7 +75,7 @@ const ICON = {
   candles: '<path d="M7 4v16M17 4v16M12 7v10"/><rect x="5" y="8" width="4" height="6" rx="1"/><rect x="15" y="7" width="4" height="7" rx="1"/>',
   tax: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
   bank: '<path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/>',
-  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  gear: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   more: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
   sync: '<path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5"/><path d="M5 3v4h4M19 21v-4h-4"/>',
@@ -106,7 +106,7 @@ const ICON = {
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   ext: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'
 };
-const ico = (n, s = '') => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' + s + '>' + (ICON[n] || '') + '</svg>';
+const ico = (n, s = '') => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' + s + '>' + (ICON[n] || '') + '</svg>';
 const PAL = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)'];
 
 const LISTS = ['accounts', 'tx', 'ledger', 'derivs', 'rules', 'goals', 'aiNotes', 'priceAlerts', 'aiChats'];
@@ -264,7 +264,7 @@ async function syncNow(manual = false) {
   if (navigator.onLine === false) { syncState = 'off'; paintSync(); return; }
   syncBusy = true; syncState = 'busy'; paintSync();
   try {
-    const S = state.settings, id = await syncId(), r = await api('/sync/' + id).catch(e => { if (/404/.test(e.message)) return null; throw e; });
+    const S = state.settings, id = await syncId(), r = await api('/sync/' + id).catch(e => { if (e.status === 404 || /404|no hay copia/i.test(e.message)) return null; throw e; });
     const keep = {}; for (const k of LOCAL_ONLY) keep[k] = S[k];
     let changed = false;
     if (r && r.data && r.updated !== keep.lastRemote) {
@@ -283,21 +283,30 @@ async function syncNow(manual = false) {
     localStorage.setItem(STORE, JSON.stringify(state));
     syncState = 'ok'; if (changed && ready && !$('modal').open) render(); if (manual) toast(changed ? 'Sincronizado: hay datos nuevos del otro dispositivo' : 'Sincronizado');
   } catch (e) {
-    syncState = 'err'; state.syncError = e.message; state.settings.syncRetries = (state.settings.syncRetries || 0) + 1;
+    const rawMsg = String(e.message || e);
+    const niceMsg = /AES key|OperationError|atob|invalid character/i.test(rawMsg)
+      ? 'La clave de sincronización es inválida o está incompleta. Genera una nueva o vuelve a vincular.'
+      : rawMsg;
+    syncState = 'err'; state.syncError = niceMsg; state.settings.syncRetries = (state.settings.syncRetries || 0) + 1;
     const waits = [5000, 15000, 60000, 300000], wait = waits[Math.min(state.settings.syncRetries - 1, waits.length - 1)];
     if (syncOn() && navigator.onLine !== false) setTimeout(() => syncNow(false), wait);
-    if (/conflicto/i.test(e.message) && state.settings.syncRetries <= 3) syncAgain = true;
-    if (manual) toast('No se pudo sincronizar: ' + e.message + ' · se reintentará automáticamente.');
+    if (/conflicto/i.test(rawMsg) && state.settings.syncRetries <= 3) syncAgain = true;
+    if (manual) toast('No se pudo sincronizar: ' + niceMsg + ' · se reintentará automáticamente.');
   } finally { syncBusy = false; paintSync(); if (syncAgain) { syncAgain = false; scheduleSync(450); } }
 }
 function ago(t) { if (!t) return ''; const s = (Date.now() - t) / 1000; return s < 60 ? 'ahora mismo' : s < 3600 ? 'hace ' + Math.floor(s / 60) + ' min' : s < 86400 ? 'hace ' + Math.floor(s / 3600) + ' h' : 'el ' + fmtDate(localDate(new Date(t))); }
 function paintSync() {
   const on = syncOn(), t = state.settings.lastSync;
   const clsDot = !on ? '' : syncState === 'busy' ? 'busy' : syncState === 'err' || syncState === 'off' ? 'err' : t ? 'ok' : '';
-  const txt = !on ? 'Solo en este dispositivo' : syncState === 'busy' ? 'Sincronizando…' : syncState === 'err' ? 'Error al sincronizar' : syncState === 'off' ? 'Sin conexión' : 'Sincronizado ' + ago(t);
+  const txt = !on ? 'Solo local' : syncState === 'busy' ? 'Sincronizando…' : syncState === 'err' ? 'Reintentar sync' : syncState === 'off' ? 'Sin conexión' : 'Al día ' + ago(t);
   for (const id of ['sync-side', 'sync-drawer']) if ($(id)) $(id).innerHTML = '<span class="dot ' + clsDot + '"></span>' + txt;
-  if ($('sync-top')) { $('sync-top').innerHTML = '<span class="dot ' + clsDot + '" style="width:10px;height:10px"></span>'; $('sync-top').title = txt; }
-  $$('[data-syncstate]').forEach(e => e.innerHTML = '<span class="row" style="gap:8px"><span class="dot ' + clsDot + '"></span>' + txt + '</span>');
+  if ($('sync-top')) {
+    const topLabel = !on ? 'Local' : syncState === 'busy' ? 'Sync…' : syncState === 'err' ? 'Error sync' : syncState === 'off' ? 'Offline' : 'Sync OK';
+    $('sync-top').className = 'sync-pill ' + clsDot;
+    $('sync-top').innerHTML = '<span class="dot ' + clsDot + '"></span><span>' + topLabel + '</span>';
+    $('sync-top').title = txt;
+  }
+  $$('[data-syncstate]').forEach(e => e.innerHTML = '<span class="row" style="gap:8px"><span class="dot ' + clsDot + '"></span>' + txt + (syncState === 'err' && state.syncError ? ' · <span class="down">' + esc(state.syncError) + '</span>' : '') + '</span>');
 }
 function pairLink() { return location.origin + location.pathname + '#pair=' + b64u(new TextEncoder().encode(JSON.stringify({ w: state.settings.worker, t: state.settings.token, s: state.settings.sync }))); }
 function readPair() {
@@ -328,5 +337,8 @@ function assetColor(sym) {
   let h = 0; for (const c of String(sym || '')) h = (h * 31 + c.charCodeAt(0)) % 997;
   return PAL[h % PAL.length];
 }
-function catInitials(c) { return c.name.split(/\s+/)[0].slice(0, 2).toUpperCase(); }
+function catInitials(c) {
+  const M = { super: 'SP', suscripciones: 'SB', restaurantes: 'RE', hogar: 'HO', combustible: 'CB', movilidad: 'MV', transporte: 'TR', compras: 'CM', salud: 'SL', deporte: 'DP', cuidado: 'CP', ocio: 'OC', bizum_out: 'BZ', bizum_in: 'BZ', nomina: 'NM', ingresos: 'IN', efectivo: 'EF', comisiones: 'CS', otros: 'OT', inversion: 'IV', interno: 'IT' };
+  return M[c.id] || c.name.split(/\s+/)[0].slice(0, 2).toUpperCase();
+}
 function initials(s) { const w = String(s || '').replace(/[^A-Za-zÁÉÍÓÚÑÜáéíóúñü0-9 ]/g, ' ').trim().split(/\s+/).filter(x => x.length > 1); return ((w[0] || '?')[0] + ((w[1] || '')[0] || '')).toUpperCase(); }
