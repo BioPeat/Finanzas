@@ -37,13 +37,6 @@ Mejorar la app real sin perder datos ni degradar privacidad, claridad o fiabilid
 6. Actualiza versión/revisión, comentarios, contexto, mapa, pruebas y guía si cambia el uso.
 7. Cierra con un resumen breve: archivos cambiados, comprobaciones ejecutadas con su resultado real (separando probado vs pendiente) y riesgos pendientes.
 
-## Delegación escalonada y Swarm autónomo
-Elige el nivel mínimo que resuelva la tarea con fiabilidad y menor consumo de cuota (coste adicional 0 €):
-1. **Agente único**: tareas acotadas, secuenciales o centradas en un módulo.
-2. **Subagentes ligeros (`invoke_subagent`)**: exploración multiarchivo, triaje de logs o revisión visual puntual (`context-scout`, `research` o `browser` en `flash` / `flash_lite`).
-3. **Swarm nativo autónomo (`swarm`, sin esperar `/swarm`)**: actívalo por iniciativa propia **solo** cuando existan ≥2 frentes sustanciales e independientes con archivos y responsabilidades bien delimitados, la coordinación paralela o un verificador aporte ventaja clara, el beneficio en tiempo o fiabilidad compense el alto consumo (`Quota Heavy`, verificando margen antes con `swarm{action:"models"}` y sin créditos de pago) y `swarm` esté disponible (si no lo está, degrada a subagentes admitidos y avisa solo si Swarm aportaría ventaja clara).
-4. **Operación y modelos en Swarm**: usa el equipo mínimo suficiente, `workspace:"share"` para autores concurrentes, `kill` al terminar cada worker y comunica brevemente la decisión y motivo sin pedir aprobación rutinaria (manteniendo confirmaciones de seguridad). Por defecto usa el modelo de la conversación (`Orchestrator (Neon)`), pero está autorizado asignar modelos ligeros incluidos en la suscripción (p. ej. `gemini-4-hydrogen-medium` o `gemini-3.8-flash-medium`) a workers auxiliares/rutinarios o si baja la cuota principal, siempre dentro de cuota incluida.
-
 ## Decisiones técnicas y comandos comprobados
 - **Stack**: PWA 100 % vanilla sin `package.json` ni bundler (`index.html`, `css/app.css`, `js/*.js`), `localStorage` (`caudal_v1`), Cloudflare Worker `w6` + KV `CAUDAL` y CI automático en `.github/workflows/check.yml`.
 - **Chequeo estático rápido local** (Node v24 incluido en Antigravity): `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" .agents\skills\verificar-cambios\scripts\check-static.mjs` (o `node .agents/skills/verificar-cambios/scripts/check-static.mjs`).
