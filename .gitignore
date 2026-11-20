@@ -13,3 +13,6 @@ __pycache__/
 Thumbs.db
 playwright-report/
 test-results/
+
+# Copias de seguridad locales de configuración Antigravity
+.agents/backups/
