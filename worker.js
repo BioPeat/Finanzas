@@ -67,13 +67,15 @@ async function binance(env) {
 }
 
 // ---------- Kraken Spot + Margen ----------
+let krakenLastNonce = 0, krakenFuturesLastNonce = 0;
 async function krakenPrivate(env, path, params = {}) {
-  const nonce = String(Date.now() * 1000);
+  const nonce = String(krakenLastNonce = Math.max(Date.now() * 1000, krakenLastNonce + 1));
+  const key = String(env.KRAKEN_KEY || '').trim(), sec = String(env.KRAKEN_SECRET || '').trim();
   const body = new URLSearchParams({ nonce, ...params }).toString();
   const sha = await crypto.subtle.digest('SHA-256', enc.encode(nonce + body));
   const msg = new Uint8Array([...enc.encode(path), ...new Uint8Array(sha)]);
-  const sig = b64(await hmac('SHA-512', unb64(env.KRAKEN_SECRET), msg));
-  const r = await getJSON('https://api.kraken.com' + path, { method: 'POST', body, headers: { 'API-Key': env.KRAKEN_KEY, 'API-Sign': sig, 'Content-Type': 'application/x-www-form-urlencoded' } });
+  const sig = b64(await hmac('SHA-512', unb64(sec), msg));
+  const r = await getJSON('https://api.kraken.com' + path, { method: 'POST', body, headers: { 'API-Key': key, 'API-Sign': sig, 'Content-Type': 'application/x-www-form-urlencoded' } });
   if (r.error && r.error.length) throw new Error(r.error.join(', '));
   return r.result || {};
 }
@@ -97,12 +99,13 @@ async function kraken(env) {
 
 // ---------- Kraken Futures (claves propias de futures.kraken.com) ----------
 async function krakenFuturesReq(env, path, params = '') {
-  const nonce = String(Date.now());
+  const nonce = String(krakenFuturesLastNonce = Math.max(Date.now(), krakenFuturesLastNonce + 1));
+  const key = String(env.KRAKEN_FUTURES_KEY || '').trim(), sec = String(env.KRAKEN_FUTURES_SECRET || '').trim();
   const msg = params + nonce + path;
   const sha = await crypto.subtle.digest('SHA-256', enc.encode(msg));
-  const authent = b64(await hmac('SHA-512', unb64(env.KRAKEN_FUTURES_SECRET), sha));
+  const authent = b64(await hmac('SHA-512', unb64(sec), sha));
   const url = 'https://futures.kraken.com' + path + (params ? '?' + params : '');
-  const r = await getJSON(url, { headers: { APIKey: env.KRAKEN_FUTURES_KEY, Authent: authent, Nonce: nonce } });
+  const r = await getJSON(url, { headers: { APIKey: key, Authent: authent, Nonce: nonce } });
   if (r.result && r.result !== 'success') throw new Error(r.error || 'Error en Kraken Futures');
   return r;
 }
@@ -133,41 +136,59 @@ async function krakenFutures(env) {
 
 // ---------- KuCoin Spot + Earn + Futuros ----------
 async function kucoinReq(key, secret, passphrase, base, path, method = 'GET', body = '') {
+  const k = String(key || '').trim(), sec = String(secret || '').trim(), passRaw = String(passphrase || '').trim();
   const ts = String(Date.now());
-  const sign = b64(await hmac('SHA-256', secret, ts + method + path + body));
-  const pass = b64(await hmac('SHA-256', secret, passphrase));
+  const sign = b64(await hmac('SHA-256', sec, ts + method + path + body));
+  const pass = b64(await hmac('SHA-256', sec, passRaw));
   const r = await getJSON(base + path, {
     method,
     body: body || undefined,
-    headers: { 'KC-API-KEY': key, 'KC-API-SIGN': sign, 'KC-API-TIMESTAMP': ts, 'KC-API-PASSPHRASE': pass, 'KC-API-KEY-VERSION': '2', 'Content-Type': 'application/json' }
+    headers: { 'KC-API-KEY': k, 'KC-API-SIGN': sign, 'KC-API-TIMESTAMP': ts, 'KC-API-PASSPHRASE': pass, 'KC-API-KEY-VERSION': '2', 'Content-Type': 'application/json' }
   });
-  if (r.code && r.code !== '200000') throw new Error(r.msg || r.code);
+  if (r.code && r.code !== '200000') {
+    const err = new Error(r.msg || r.code);
+    err.kcCode = String(r.code);
+    throw err;
+  }
   return r;
+}
+function isKucoinAuthErr(e) {
+  return (e && e.status === 401) || /400003|400004|Invalid KC-API-KEY/i.test(String(e && (e.kcCode || e.message) || ''));
 }
 async function kucoin(env) {
   const assets = {}, positions = [], warnings = [];
-  const spot = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, 'https://api.kucoin.com', '/api/v1/accounts');
+  let kcBase = String(env.KUCOIN_BASE || 'https://api.kucoin.com').replace(/\/$/, '');
+  let spot;
+  try {
+    spot = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, kcBase, '/api/v1/accounts');
+  } catch (e) {
+    if (!env.KUCOIN_BASE && isKucoinAuthErr(e)) {
+      kcBase = 'https://api.kucoin.eu';
+      spot = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, kcBase, '/api/v1/accounts');
+    } else throw e;
+  }
   for (const a of spot.data || []) add(assets, a.currency, a.balance);
 
   const fk = env.KUCOIN_FUTURES_KEY || env.KUCOIN_KEY;
   const fs = env.KUCOIN_FUTURES_SECRET || env.KUCOIN_SECRET;
   const fp = env.KUCOIN_FUTURES_PASSPHRASE || env.KUCOIN_PASSPHRASE;
+  const futBase = String(env.KUCOIN_FUTURES_BASE || 'https://api-futures.kucoin.com').replace(/\/$/, '');
   const opt = async (name, fn) => { try { await fn(); } catch (e) { warnings.push(name + ': ' + e.message); } };
 
   await opt('earn', async () => {
-    const er = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, 'https://api.kucoin.com', '/api/v1/earn/hold-assets');
+    const er = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, kcBase, '/api/v1/earn/hold-assets');
     for (const item of (er.data && er.data.items) || []) add(assets, item.currency, item.holdAmount);
   });
   await opt('futuros saldo', async () => {
     for (const ccy of ['USDT', 'BTC', 'USDC']) {
       try {
-        const ov = await kucoinReq(fk, fs, fp, 'https://api-futures.kucoin.com', '/api/v1/account-overview?currency=' + ccy);
+        const ov = await kucoinReq(fk, fs, fp, futBase, '/api/v1/account-overview?currency=' + ccy);
         if (ov.data && +ov.data.accountEquity) add(assets, ccy, ov.data.accountEquity);
       } catch (e) { }
     }
   });
   await opt('futuros posiciones', async () => {
-    const pos = await kucoinReq(fk, fs, fp, 'https://api-futures.kucoin.com', '/api/v1/positions');
+    const pos = await kucoinReq(fk, fs, fp, futBase, '/api/v1/positions');
     for (const p of pos.data || []) {
       const qty = +p.currentQty || 0; if (!qty) continue;
       const side = qty < 0 ? 'short' : 'long';
@@ -179,19 +200,41 @@ async function kucoin(env) {
 }
 
 // ---------- OKX V5 ----------
-async function okxReq(env, path) {
+async function okxReq(env, path, base = '') {
+  const root = (base || env.OKX_BASE || 'https://www.okx.com').replace(/\/$/, '');
+  const key = String(env.OKX_KEY || '').trim(), sec = String(env.OKX_SECRET || '').trim(), pass = String(env.OKX_PASSPHRASE || '').trim();
   const ts = new Date().toISOString(), pre = ts + 'GET' + path;
-  const sign = b64(await hmac('SHA-256', env.OKX_SECRET, pre));
-  const r = await getJSON('https://www.okx.com' + path, { headers: { 'OK-ACCESS-KEY': env.OKX_KEY, 'OK-ACCESS-SIGN': sign, 'OK-ACCESS-TIMESTAMP': ts, 'OK-ACCESS-PASSPHRASE': env.OKX_PASSPHRASE } });
-  if (r.code && r.code !== '0') throw new Error(r.msg || r.code);
+  const sign = b64(await hmac('SHA-256', sec, pre));
+  const r = await getJSON(root + path, { headers: { 'OK-ACCESS-KEY': key, 'OK-ACCESS-SIGN': sign, 'OK-ACCESS-TIMESTAMP': ts, 'OK-ACCESS-PASSPHRASE': pass } });
+  if (r.code && r.code !== '0') {
+    const err = new Error(r.msg || r.code);
+    err.okxCode = String(r.code);
+    throw err;
+  }
   return r;
 }
+function isOkxRegionErr(e) {
+  return (e && e.status === 401) || /50119|50111|50101|API key doesn't exist|Invalid OK-ACCESS-KEY/i.test(String(e && (e.okxCode || e.message) || ''));
+}
 async function okx(env) {
-  const r = await okxReq(env, '/api/v5/account/balance');
+  let okxBase = String(env.OKX_BASE || 'https://www.okx.com').replace(/\/$/, '');
+  let r;
+  try {
+    r = await okxReq(env, '/api/v5/account/balance', okxBase);
+  } catch (e) {
+    if (!env.OKX_BASE && isOkxRegionErr(e)) {
+      okxBase = 'https://eea.okx.com';
+      r = await okxReq(env, '/api/v5/account/balance', okxBase);
+    } else throw e;
+  }
   const assets = {}, positions = [], warnings = [];
   for (const d of (r.data && r.data[0] && r.data[0].details) || []) add(assets, d.ccy, d.eq || d.cashBal || d.availBal);
   try {
-    const pr = await okxReq(env, '/api/v5/account/positions');
+    const fr = await okxReq(env, '/api/v5/asset/balances', okxBase);
+    for (const d of fr.data || []) add(assets, d.ccy, d.bal != null ? d.bal : ((+d.availBal || 0) + (+d.frozenBal || 0)));
+  } catch (e) { warnings.push('fondos: ' + e.message); }
+  try {
+    const pr = await okxReq(env, '/api/v5/account/positions', okxBase);
     for (const p of pr.data || []) {
       const sz = +p.pos || 0; if (!sz) continue;
       const side = p.posSide === 'short' || sz < 0 ? 'short' : 'long';
@@ -250,8 +293,17 @@ async function exchangeHistory(env, ex) {
     }
   } else if (ex === 'kucoin') {
     if (!EXCHANGES.kucoin.keys.every(k => env[k])) throw new Error('Faltan claves de KuCoin.');
+    let kcBase = String(env.KUCOIN_BASE || 'https://api.kucoin.com').replace(/\/$/, '');
     try {
-      const lg = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, 'https://api.kucoin.com', '/api/v1/accounts/ledgers?pageSize=50');
+      let lg;
+      try {
+        lg = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, kcBase, '/api/v1/accounts/ledgers?pageSize=50');
+      } catch (e) {
+        if (!env.KUCOIN_BASE && isKucoinAuthErr(e)) {
+          kcBase = 'https://api.kucoin.eu';
+          lg = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, kcBase, '/api/v1/accounts/ledgers?pageSize=50');
+        } else throw e;
+      }
       for (const l of (lg.data && lg.data.items) || []) {
         const ch = (l.direction === 'out' ? -1 : 1) * Math.abs(+l.amount || 0);
         const bt = String(l.bizType || '');
@@ -261,7 +313,7 @@ async function exchangeHistory(env, ex) {
       }
     } catch (e) { warnings.push('ledgers spot: ' + e.message); }
     try {
-      const fills = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, 'https://api.kucoin.com', '/api/v1/fills?pageSize=50');
+      const fills = await kucoinReq(env.KUCOIN_KEY, env.KUCOIN_SECRET, env.KUCOIN_PASSPHRASE, kcBase, '/api/v1/fills?pageSize=50');
       for (const f of (fills.data && fills.data.items) || []) {
         const [base, quote] = String(f.symbol || '').split('-');
         if (!base || !quote) continue;
@@ -412,12 +464,31 @@ async function onchain(url) {
 }
 
 // ---------- Open Banking PSD2 gratuito via Enable Banking ----------
+function derLen(n) {
+  return n < 128 ? [n] : n < 256 ? [0x81, n] : [0x82, (n >> 8) & 0xff, n & 0xff];
+}
+function pkcs1ToPkcs8(der) {
+  const b = der instanceof Uint8Array ? der : new Uint8Array(der);
+  const ver = [0x02, 0x01, 0x00];
+  const algId = [0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00];
+  const octHead = [0x04, ...derLen(b.length)];
+  const innerLen = ver.length + algId.length + octHead.length + b.length;
+  const seqHead = [0x30, ...derLen(innerLen)];
+  const out = new Uint8Array(seqHead.length + innerLen);
+  let off = 0;
+  for (const part of [seqHead, ver, algId, octHead, b]) { out.set(part, off); off += part.length; }
+  return out;
+}
 async function enableBankingJWT(env) {
   if (!env.ENABLE_BANKING_APP_ID || !env.ENABLE_BANKING_PRIVATE_KEY) throw new Error('Enable Banking no está configurado en los secretos del Worker.');
-  const pem = String(env.ENABLE_BANKING_PRIVATE_KEY).replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '');
-  const key = await crypto.subtle.importKey('pkcs8', unb64(pem), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const rawPem = String(env.ENABLE_BANKING_PRIVATE_KEY).replace(/\\n/g, '\n');
+  const isPkcs1 = /-----BEGIN RSA PRIVATE KEY-----/i.test(rawPem);
+  const pem = rawPem.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '');
+  let der = unb64(pem);
+  if (isPkcs1) der = pkcs1ToPkcs8(der);
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const iat = Math.floor(Date.now() / 1000);
-  const head = b64u(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: env.ENABLE_BANKING_APP_ID })));
+  const head = b64u(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: String(env.ENABLE_BANKING_APP_ID).trim() })));
   const pay = b64u(enc.encode(JSON.stringify({ iss: 'enablebanking.com', aud: 'api.enablebanking.com', iat, exp: iat + 300 })));
   const sig = b64u(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(head + '.' + pay)));
   return head + '.' + pay + '.' + sig;
@@ -509,9 +580,21 @@ async function askAI(env, req) {
   return callAIProvider(env, { provider: req.provider, model: req.model, contents: [{ role: 'user', parts: [{ text: prompt }] }], maxTokens: 1400, temperature: 0.25 });
 }
 
+function parseAllowedOrigins(env) {
+  return String(env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+}
+function isOriginAllowed(origin, allowedList) {
+  if (!allowedList.length || !origin) return true;
+  const o = origin.toLowerCase();
+  return allowedList.some(a => a.toLowerCase() === o);
+}
+function workerMirrors(env) {
+  return String(env.FALLBACK_URLS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+}
 function cors(req, env, revealError = false) {
-  const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowed = String(env.ALLOWED_ORIGIN || '').replace(/\/$/, '');
-  const exposed = revealError && origin ? origin : (allowed || '*');
+  const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowedList = parseAllowedOrigins(env);
+  const matched = origin && allowedList.find(a => a.toLowerCase() === origin.toLowerCase());
+  const exposed = (revealError && origin) ? origin : (matched || allowedList[0] || '*');
   return { 'Access-Control-Allow-Origin': exposed, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS', 'Access-Control-Allow-Headers': 'X-Caudal-Token,Content-Type', 'Access-Control-Max-Age': '86400', 'Cache-Control': 'no-store' };
 }
 
@@ -553,7 +636,7 @@ async function sha256Hex(s) {
   return hex(await crypto.subtle.digest('SHA-256', enc.encode(String(s || ''))));
 }
 
-async function checkToken(tok, env, origin, allowed, isSyncPath) {
+async function checkToken(tok, env, origin, allowedOk, isSyncPath) {
   const t = String(tok || '');
   if (t.length < 20) return false;
   if (await safeEq(t, env.TOKEN)) {
@@ -563,7 +646,7 @@ async function checkToken(tok, env, origin, allowed, isSyncPath) {
     }
     return true;
   }
-  if (!env.CAUDAL || !allowed || origin !== allowed) return false;
+  if (!env.CAUDAL || !allowedOk) return false;
   const tokHash = await sha256Hex(t);
   let ownerHash = await env.CAUDAL.get('auth:owner_sha256');
   if (!ownerHash && isSyncPath) {
@@ -631,10 +714,11 @@ function credentialSources(rawEnv, effEnv) {
 
 export default {
   async fetch(req, env) {
-    const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowed = String(env.ALLOWED_ORIGIN || '').replace(/\/$/, '');
-    if (allowed && origin && origin !== allowed) {
+    const origin = (req.headers.get('Origin') || '').replace(/\/$/, ''), allowedList = parseAllowedOrigins(env);
+    const originAllowed = isOriginAllowed(origin, allowedList);
+    if (allowedList.length && origin && !originAllowed) {
       const H = cors(req, env, true);
-      return new Response(JSON.stringify({ error: 'Origen no permitido', expected: allowed, received: origin, fix: 'ALLOWED_ORIGIN debe coincidir exactamente con el origen de la app, sin barra final.' }), { status: 403, headers: { ...H, 'Content-Type': 'application/json; charset=utf-8' } });
+      return new Response(JSON.stringify({ error: 'Origen no permitido', expected: allowedList[0], allowedOrigins: allowedList, received: origin, fix: 'ALLOWED_ORIGIN debe coincidir exactamente con el origen de la app, sin barra final.' }), { status: 403, headers: { ...H, 'Content-Type': 'application/json; charset=utf-8' } });
     }
     const H = cors(req, env), respond = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...H, 'Content-Type': 'application/json; charset=utf-8' } });
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: H });
@@ -642,22 +726,26 @@ export default {
     if (!env.TOKEN || String(env.TOKEN).length < 20) return respond({ error: 'Falta TOKEN o es demasiado corto (mínimo 20 caracteres).' }, 500);
     const tok = req.headers.get('X-Caudal-Token') || '';
     const isSyncPath = /^\/sync\/[a-f0-9]{20,64}$/.test(url.pathname);
-    if (!(await checkToken(tok, env, origin, allowed, isSyncPath))) {
+    const allowedOk = allowedList.length > 0 && !!origin && originAllowed;
+    if (!(await checkToken(tok, env, origin, allowedOk, isSyncPath))) {
       return respond({ error: 'TOKEN no coincide. En Ajustes → Vincular otro dispositivo abre el enlace desde tu sesión principal o introduce el TOKEN configurado en Cloudflare.' }, 401);
     }
-    const effEnv = await withVault(env);
+    let _effEnv = null;
+    const getEffEnv = async () => _effEnv || (_effEnv = await withVault(env));
+    const mirrors = workerMirrors(env);
     try {
       if (url.pathname === '/ping' || (url.pathname === '/credentials' && req.method === 'GET')) {
+        const effEnv = await getEffEnv();
         return respond({
-          ok: true, version: W_VERSION, kv: !!effEnv.CAUDAL, originProtected: !!allowed, ai: aiProviders(effEnv),
+          ok: true, version: W_VERSION, kv: !!effEnv.CAUDAL, originProtected: allowedList.length > 0, ai: aiProviders(effEnv),
           rollingBackups: !!effEnv.CAUDAL, openBanking: !!(effEnv.ENABLE_BANKING_APP_ID && effEnv.ENABLE_BANKING_PRIVATE_KEY),
-          onchain: true, ohlcv: true, vaultLocked: !!effEnv.__vaultLocked,
+          onchain: true, ohlcv: true, vaultLocked: !!effEnv.__vaultLocked, mirrors,
           credentialSources: credentialSources(env, effEnv),
           exchanges: Object.fromEntries(Object.entries(EXCHANGES).map(([k, x]) => [k, x.keys.every(n => effEnv[n])]))
         });
       }
       if (url.pathname === '/credentials' && req.method === 'POST') {
-        if (!effEnv.CAUDAL) return respond({ error: 'Falta enlazar el espacio KV como CAUDAL.' }, 500);
+        if (!env.CAUDAL) return respond({ error: 'Falta enlazar el espacio KV como CAUDAL.' }, 500);
         const allow = new Set(VAULT_ALLOWLIST);
         const body = JSON.parse((await req.text()) || '{}');
         const current = await readVault(env);
@@ -682,19 +770,20 @@ export default {
         await writeVault(env, vault);
         const merged = await withVault(env);
         return respond({
-          ok: true, version: W_VERSION, kv: !!merged.CAUDAL, originProtected: !!allowed, ai: aiProviders(merged),
+          ok: true, version: W_VERSION, kv: !!merged.CAUDAL, originProtected: allowedList.length > 0, ai: aiProviders(merged),
           rollingBackups: !!merged.CAUDAL, openBanking: !!(merged.ENABLE_BANKING_APP_ID && merged.ENABLE_BANKING_PRIVATE_KEY),
-          onchain: true, ohlcv: true, vaultLocked: !!merged.__vaultLocked,
+          onchain: true, ohlcv: true, vaultLocked: !!merged.__vaultLocked, mirrors,
           credentialSources: credentialSources(env, merged),
           exchanges: Object.fromEntries(Object.entries(EXCHANGES).map(([k, x]) => [k, x.keys.every(n => merged[n])]))
         });
       }
       if (url.pathname === '/balances') {
+        const effEnv = await getEffEnv();
         const exchanges = {}, errors = {};
         await Promise.all(Object.entries(EXCHANGES).filter(([, x]) => x.keys.every(n => effEnv[n])).map(async ([k, x]) => { try { exchanges[k] = await x.fn(effEnv); } catch (e) { errors[k] = e.message; } }));
         return respond({ exchanges, errors, ts: Date.now() });
       }
-      if (url.pathname === '/history') return respond(await exchangeHistory(effEnv, url.searchParams.get('exchange') || ''));
+      if (url.pathname === '/history') return respond(await exchangeHistory(await getEffEnv(), url.searchParams.get('exchange') || ''));
       if (url.pathname === '/prices') return respond(await prices(url));
       if (url.pathname === '/hist') return respond(await hist(url));
       if (url.pathname === '/series') return respond(await series(url));
@@ -703,31 +792,46 @@ export default {
       if (url.pathname === '/onchain') return respond(await onchain(url));
       if (url.pathname === '/bank/aspsps') {
         const c = (url.searchParams.get('country') || 'ES').toUpperCase();
-        return respond(await ebReq(effEnv, '/aspsps?country=' + encodeURIComponent(c)));
+        return respond(await ebReq(await getEffEnv(), '/aspsps?country=' + encodeURIComponent(c)));
       }
       if (url.pathname === '/bank/auth' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
         const valid = new Date(Date.now() + 89 * 864e5).toISOString();
-        const r = await ebReq(effEnv, '/auth', { method: 'POST', body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
+        const r = await ebReq(await getEffEnv(), '/auth', { method: 'POST', body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
         return respond(r);
       }
       if (url.pathname === '/bank/session' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
-        return respond(await ebReq(effEnv, '/sessions', { method: 'POST', body: JSON.stringify({ code: b.code }) }));
+        return respond(await ebReq(await getEffEnv(), '/sessions', { method: 'POST', body: JSON.stringify({ code: b.code }) }));
       }
       if (url.pathname === '/bank/sync' && req.method === 'POST') {
+        const effEnv = await getEffEnv();
         const b = JSON.parse(await req.text()), accounts = [], errors = [];
-        const from = b.dateFrom ? '?date_from=' + encodeURIComponent(b.dateFrom) : '';
         for (const acc of b.accounts || []) {
           try {
-            const [balRes, txRes] = await Promise.all([
+            const qs1 = new URLSearchParams();
+            if (b.dateFrom) qs1.set('date_from', b.dateFrom);
+            const qStr1 = qs1.toString();
+            const [balRes, firstTxRes] = await Promise.all([
               ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/balances'),
-              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + from)
+              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + (qStr1 ? '?' + qStr1 : ''))
             ]);
-            const firstBal = (balRes.balances || [])[0];
+            const rawTx = [...(firstTxRes.transactions || [])];
+            let cont = firstTxRes.continuation_key || '', page = 1;
+            while (cont && page < 3) {
+              const qs = new URLSearchParams();
+              if (b.dateFrom) qs.set('date_from', b.dateFrom);
+              qs.set('continuation_key', cont);
+              const nextTx = await ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions?' + qs.toString());
+              rawTx.push(...(nextTx.transactions || []));
+              cont = nextTx.continuation_key || '';
+              page++;
+            }
+            const bals = balRes.balances || [];
+            const firstBal = ['CLAV', 'ITAV', 'XPCD', 'CLBD'].map(tp => bals.find(x => x.balance_type === tp)).find(Boolean) || bals[0];
             const bal = firstBal && firstBal.balance_amount ? +firstBal.balance_amount.amount : null;
             const cur = firstBal && firstBal.balance_amount ? firstBal.balance_amount.currency : (acc.currency || 'EUR');
-            const tx = (txRes.transactions || []).map(t => {
+            const tx = rawTx.map(t => {
               const amt = +(t.transaction_amount && t.transaction_amount.amount || 0);
               const signed = t.credit_debit_indicator === 'DBIT' ? -Math.abs(amt) : t.credit_debit_indicator === 'CRDT' ? Math.abs(amt) : amt;
               const desc = [...(t.remittance_information || []), t.creditor?.name, t.debtor?.name].filter(Boolean).join(' · ') || 'Movimiento bancario';
@@ -741,7 +845,7 @@ export default {
       if (url.pathname === '/ai' && req.method === 'POST') {
         const raw = await req.text();
         if (raw.length > 4500000) return respond({ error: 'Solicitud demasiado grande' }, 413);
-        return respond(await askAI(effEnv, JSON.parse(raw)));
+        return respond(await askAI(await getEffEnv(), JSON.parse(raw)));
       }
       const bm = url.pathname.match(/^\/backups\/([a-f0-9]{20,64})$/);
       if (bm) {
@@ -757,7 +861,7 @@ export default {
           const body = await req.text(); if (body.length > 20e6) return respond({ error: 'Copia demasiado grande' }, 413);
           const o = JSON.parse(body); if (!o.data || !o.updated || typeof o.data !== 'string') return respond({ error: 'Copia no válida' }, 400);
           const previousRaw = await env.CAUDAL.get(key); let previous = null; try { previous = previousRaw && JSON.parse(previousRaw); } catch (e) { }
-          if (previous && o.baseUpdated != null && +o.baseUpdated !== +previous.updated) return respond({ error: 'Conflicto de sincronización: hay una versión más nueva.', currentUpdated: previous.updated }, 409);
+          if (previous && o.baseUpdated != null && +o.baseUpdated !== +previous.updated) return respond({ error: 'Conflicto de sincronización: hay una versión más nueva.', currentUpdated: previous.updated, current: previous }, 409);
           if (previousRaw && previous && previous.updated) {
             const bkey = 'backup:' + m[1] + ':' + previous.updated; await env.CAUDAL.put(bkey, previousRaw, { expirationTtl: 2592000 });
             const ikey = 'backup-index:' + m[1], old = await env.CAUDAL.get(ikey, 'json') || []; const idx = [{ updated: previous.updated, device: previous.device || '', saved: Date.now() }, ...old.filter(x => x.updated !== previous.updated)].slice(0, 10); await env.CAUDAL.put(ikey, JSON.stringify(idx));

@@ -32,6 +32,10 @@ function go(v, f) {
   closeDrawer();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, old = view;
   if (f) filt = { ...filt, day: '', ...f };
+  else if (v === 'movimientos' && view !== 'movimientos') {
+    filt.day = ''; filt.cat = ''; filt.acc = ''; filt.q = '';
+    if (!filt.type) filt.type = 'out';
+  }
   if (v !== 'cuentas') activeAccId = '';
   view = v;
   render();
@@ -48,20 +52,42 @@ function navBtn(id, n, i, clsName = 'nav') {
   return '<button class="' + clsName + '" type="button" data-go="' + id + '"' + (view === id ? ' aria-current="page"' : '') + '>' + ico(i) + '<span>' + n + '</span>' + (alCount ? '<span class="nav-badge">' + alCount + '</span>' : '') + '</button>';
 }
 function sideNav() {
-  return '<div class="nav-group-label">Principal</div>' + VIEWS.slice(0, 4).map(([id, n, i]) => navBtn(id, n, i)).join('')
-    + '<div class="nav-group-label">Inteligencia</div>' + navBtn('copiloto', 'Copiloto IA', 'brain')
-    + '<div class="nav-group-label">Plan y Control</div>' + navBtn('objetivos', 'Plan y Alertas', 'target') + navBtn('impuestos', 'Impuestos', 'tax') + navBtn('ajustes', 'Ajustes', 'gear');
+  return '<div class="nav-group-label">Principal</div>'
+    + navBtn('resumen', 'Inicio', 'home')
+    + navBtn('movimientos', 'Movimientos', 'list')
+    + navBtn('inversiones', 'Mercados', 'chart')
+    + navBtn('cuentas', 'Cuentas', 'bank')
+    + navBtn('copiloto', 'Copiloto', 'brain')
+    + '<div class="nav-group-label">Control</div>'
+    + navBtn('objetivos', 'Plan y Alertas', 'target')
+    + navBtn('impuestos', 'Impuestos', 'tax')
+    + navBtn('ajustes', 'Ajustes', 'gear');
+}
+function sideAccountsHTML() {
+  if (!state.accounts.length) return '';
+  const nw = netWorth();
+  const isB = a => a.kind === 'bank' || a.kind === 'cash';
+  const accs = state.accounts.slice().sort((a, b) => (isB(b) - isB(a)) || (accValue(b, nw.rows) - accValue(a, nw.rows))).slice(0, 8);
+  return '<div class="nav-group-label side-acc-head"><span>Cuentas</span><button type="button" class="side-add-btn" data-act="connect-hub" title="Conectar cuenta" aria-label="Conectar cuenta">+</button></div>'
+    + accs.map(a => {
+      const ik = instKey(a), cur = view === 'cuentas' && activeAccId === a.id;
+      return '<button type="button" class="side-acc" data-acc="' + a.id + '"' + (cur ? ' aria-current="true"' : '') + '>'
+        + '<i class="cat-dot sm k-' + a.kind + (ik ? ' inst-' + ik : '') + '"></i>'
+        + '<span class="side-acc-name">' + esc(a.name) + '</span>'
+        + '<span class="side-acc-val">' + money(accValue(a, nw.rows), { d: 0 }) + '</span>'
+        + '</button>';
+    }).join('');
 }
 function drawerNav() { return sideNav(); }
 
 function renderNav() {
-  $('nav-side').innerHTML = sideNav();
+  $('nav-side').innerHTML = sideNav() + sideAccountsHTML();
   if ($('nav-drawer')) $('nav-drawer').innerHTML = drawerNav();
-  $('nav-tabs').innerHTML = TABS.map(([id, n, i]) => '<button type="button" data-go="' + id + '"' + (view === id ? ' aria-current="page"' : '') + '>' + ico(i) + n + '</button>').join('');
+  $('nav-tabs').innerHTML = TABS.map(([id, n, i]) => '<button type="button" data-go="' + id + '"' + (view === id ? ' aria-current="page"' : '') + '>' + ico(i) + '<span>' + n + '</span></button>').join('');
   const dark = document.documentElement.dataset.theme !== 'light', hid = !!state.settings.hide;
   for (const id of ['theme-side', 'theme-top', 'theme-top-desktop']) if ($(id)) $(id).innerHTML = ico(dark ? 'sun' : 'moon');
   for (const id of ['hide-side', 'hide-top', 'hide-top-desktop']) if ($(id)) $(id).innerHTML = ico(hid ? 'eyeoff' : 'eye');
-  if ($('ver-side')) $('ver-side').textContent = APP_NAME + ' ' + APP_VERSION;
+  if ($('ver-side')) $('ver-side').textContent = APP_VERSION;
   if ($('ver-badge')) $('ver-badge').textContent = APP_VERSION;
   if ($('ver-drawer')) $('ver-drawer').textContent = APP_VERSION;
   if ($('mobile-title')) $('mobile-title').textContent = (VIEWS.find(x => x[0] === view) || ['', 'Finanzas'])[1];
@@ -71,7 +97,7 @@ function renderNav() {
 function render() {
   const th = state.settings.theme === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : state.settings.theme;
   document.documentElement.dataset.theme = th;
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', th === 'light' ? '#f5f6f8' : '#090a0d');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', th === 'light' ? '#f6f5f1' : '#09090b');
   document.body.classList.toggle('hide-amounts', !!state.settings.hide);
   document.body.dataset.view = view;
   renderNav();
@@ -111,26 +137,34 @@ function modal(title, html) {
 function editTx(id) {
   const t = state.tx.find(x => x.id === id); if (!t) return quickAdd();
   const mer = merchantOf(t.desc), same = state.tx.filter(x => merchantOf(x.desc) === mer).length;
-  modal(esc(mer), '<div class="big ' + (t.amount > 0 ? 'up' : '') + '" style="font-size:32px;margin-bottom:6px">' + money(t.amount, { sign: true }) + '</div><p class="muted" style="margin:0 0 4px">' + fmtDate(t.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + esc(accName(t.acc)) + '</p><p class="faint" style="margin:0 0 14px;font-size:12.5px">' + esc(t.desc) + '</p>'
-    + '<div class="label" style="margin-top:0">Categoría</div><div class="catgrid" id="tx-cats">' + CATS.map(c => '<button type="button" class="chip" data-pick="' + c.id + '" aria-pressed="' + (c.id === t.cat) + '"><i style="background:var(' + c.color + ')"></i>' + esc(c.name) + '</button>').join('') + '</div><input type="hidden" id="tx-cat" value="' + t.cat + '">'
-    + (same > 1 ? '<label class="row" style="gap:8px;font-size:13.5px;margin-top:12px"><input type="checkbox" id="tx-all" checked> Aplicar a los ' + same + ' movimientos de «' + esc(mer) + '» y a los futuros</label>' : '')
-    + '<label class="f" style="margin-top:12px">Nota<input type="text" id="tx-note" value="' + esc(t.note || '') + '" placeholder="Opcional"></label>'
-    + '<div class="row" style="margin-top:16px">' + btn('Guardar', 'data-act="tx-save" data-id="' + t.id + '"', 'primary') + btn('Eliminar', 'data-act="tx-del" data-id="' + t.id + '"', 'danger') + '</div>');
+  modal(esc(mer), '<div class="big ' + (t.amount > 0 ? 'up' : '') + ' mb-10">' + money(t.amount, { sign: true }) + '</div><p class="muted m-0">' + fmtDate(t.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + esc(accName(t.acc)) + '</p><p class="faint mt-4 mb-12">' + esc(t.desc) + '</p>'
+    + '<div class="label mt-0">Categoría</div><div class="catgrid" id="tx-cats">' + CATS.map(c => '<button type="button" class="chip" data-pick="' + c.id + '" aria-pressed="' + (c.id === t.cat) + '"><i style="background:var(' + c.color + ')"></i>' + esc(c.name) + '</button>').join('') + '</div><input type="hidden" id="tx-cat" value="' + t.cat + '">'
+    + (same > 1 ? '<label class="row mt-12"><input type="checkbox" id="tx-all" checked> Aplicar a los ' + same + ' movimientos de «' + esc(mer) + '» y a los futuros</label>' : '')
+    + '<label class="f mt-12">Nota<input type="text" id="tx-note" value="' + esc(t.note || '') + '" placeholder="Opcional"></label>'
+    + '<details class="mt-12"><summary>Editar importe, fecha o concepto</summary><div class="form mt-10"><label class="f">Importe (€)<input type="number" step="any" id="tx-amt" value="' + t.amount + '"></label><label class="f">Fecha<input type="date" id="tx-date" value="' + t.date.slice(0, 10) + '"></label><label class="f wide">Concepto<input type="text" id="tx-desc" value="' + esc(t.desc) + '"></label></div></details>'
+    + '<div class="row mt-16">' + btn('Guardar', 'data-act="tx-save" data-id="' + t.id + '"', 'primary') + btn('Eliminar', 'data-act="tx-del" data-id="' + t.id + '"', 'danger') + '</div>');
 }
 
 let qType = 'out';
 function quickAdd() {
-  const accs = state.accounts.filter(a => a.kind === 'bank' || a.kind === 'cash'), kind = qType === 'out' ? 'expense' : 'income', cats = CATS.filter(c => c.kind === kind);
+  const accs = state.accounts.filter(a => a.kind === 'bank' || a.kind === 'cash');
+  if (qType === 'xfer' && accs.length < 2) qType = 'out';
+  const kind = qType === 'out' ? 'expense' : 'income', cats = CATS.filter(c => c.kind === kind);
   const recent = [...new Set(state.tx.filter(t => catById(t.cat).kind === kind).sort((a, b) => b.date.localeCompare(a.date)).map(t => t.cat))];
   const suggested = [...recent, ...cats.map(c => c.id)].filter((x, i, a) => a.indexOf(x) === i).slice(0, 6), selected = suggested[0] || cats[0].id;
-  modal(qType === 'out' ? 'Añadir gasto' : 'Añadir ingreso', '<div class="quick"><button type="button" data-qtype="out" aria-pressed="' + (qType === 'out') + '">' + ico('coin') + 'Gasto</button><button type="button" data-qtype="in" aria-pressed="' + (qType === 'in') + '">' + ico('trend') + 'Ingreso</button></div>'
+  const title = qType === 'out' ? 'Añadir gasto' : qType === 'in' ? 'Añadir ingreso' : 'Traspaso entre cuentas';
+  const tabs = '<div class="quick' + (accs.length >= 2 ? ' cols-3' : '') + '"><button type="button" data-qtype="out" aria-pressed="' + (qType === 'out') + '">' + ico('coin') + 'Gasto</button><button type="button" data-qtype="in" aria-pressed="' + (qType === 'in') + '">' + ico('trend') + 'Ingreso</button>' + (accs.length >= 2 ? '<button type="button" data-qtype="xfer" aria-pressed="' + (qType === 'xfer') + '">' + ico('repeat') + 'Traspaso</button>' : '') + '</div>';
+  const catFields = qType === 'xfer'
+    ? '<div class="form mt-12"><label class="f">Cuenta origen<select id="q-acc">' + accs.map(a => '<option value="' + a.id + '">' + esc(a.name) + '</option>').join('') + '</select></label><label class="f">Cuenta destino<select id="q-acc-to">' + accs.map((a, i) => '<option value="' + a.id + '"' + (i === 1 ? ' selected' : '') + '>' + esc(a.name) + '</option>').join('') + '</select></label><label class="f wide">Fecha<input type="date" id="q-date" value="' + today() + '"></label></div>'
+    : '<div class="label">Categoría</div><div class="quick-cats">' + suggested.map(id => { const c = catById(id); return '<button type="button" class="quick-cat" data-qcat="' + c.id + '" aria-pressed="' + (c.id === selected) + '"><i style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(' + c.color + ');margin-right:6px"></i>' + esc(c.name) + '</button>'; }).join('') + '</div>'
+      + '<label class="f mt-8">Todas las categorías<select id="q-cat">' + cats.map(c => '<option value="' + c.id + '"' + (c.id === selected ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label>'
+      + '<div class="form mt-12"><label class="f">Fecha<input type="date" id="q-date" value="' + today() + '"></label><label class="f">Cuenta<select id="q-acc">' + accs.map(a => '<option value="' + a.id + '">' + esc(a.name) + '</option>').join('') + '<option value="__cash">' + (accs.some(a => a.kind === 'cash') ? '+ Otra de efectivo' : 'Efectivo (nueva)') + '</option></select></label></div>';
+  modal(title, tabs
     + '<input type="text" inputmode="decimal" id="q-amt" class="amount-in" placeholder="0,00 €" autocomplete="off" aria-label="Importe">'
-    + '<label class="f" style="margin-top:12px">Concepto<input type="text" id="q-desc" placeholder="' + (qType === 'out' ? 'Ej.: café, cena, taxi…' : 'Ej.: venta, regalo…') + '"></label>'
-    + '<div class="label">Categoría</div><div class="quick-cats">' + suggested.map(id => { const c = catById(id); return '<button type="button" class="quick-cat" data-qcat="' + c.id + '" aria-pressed="' + (c.id === selected) + '"><i style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(' + c.color + ');margin-right:6px"></i>' + esc(c.name) + '</button>'; }).join('') + '</div>'
-    + '<label class="f" style="margin-top:8px">Todas las categorías<select id="q-cat">' + cats.map(c => '<option value="' + c.id + '"' + (c.id === selected ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label>'
-    + '<div class="form" style="margin-top:12px"><label class="f">Fecha<input type="date" id="q-date" value="' + today() + '"></label><label class="f">Cuenta<select id="q-acc">' + accs.map(a => '<option value="' + a.id + '">' + esc(a.name) + '</option>').join('') + '<option value="__cash">' + (accs.some(a => a.kind === 'cash') ? '+ Otra de efectivo' : 'Efectivo (nueva)') + '</option></select></label></div>'
-    + '<button type="button" class="btn primary full" style="margin-top:16px;min-height:48px" data-act="q-save">Guardar ' + (qType === 'out' ? 'gasto' : 'ingreso') + '</button>'
-    + '<div class="row" style="margin-top:10px;justify-content:center">' + btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'ghost small') + btn(ico('chart') + 'Operación inversión', 'data-act="add-op"', 'ghost small') + btn(ico('trend') + 'Derivado', 'data-act="add-deriv"', 'ghost small') + '</div>');
+    + '<label class="f mt-12">Concepto<input type="text" id="q-desc" placeholder="' + (qType === 'out' ? 'Ej.: café, cena, taxi…' : qType === 'in' ? 'Ej.: venta, regalo…' : 'Traspaso entre cuentas') + '"></label>'
+    + catFields
+    + '<button type="button" class="btn primary full mt-16" data-act="q-save">Guardar ' + (qType === 'out' ? 'gasto' : qType === 'in' ? 'ingreso' : 'traspaso') + '</button>'
+    + '<div class="row mt-10 center">' + btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'ghost small') + btn(ico('chart') + 'Operación inversión', 'data-act="add-op"', 'ghost small') + btn(ico('trend') + 'Derivado', 'data-act="add-deriv"', 'ghost small') + '</div>');
   setTimeout(() => $('q-amt')?.focus(), 60);
 }
 
@@ -253,21 +287,39 @@ function openCommandPalette() {
     ...VIEWS.map(([id, n]) => ({ t: n, sub: 'Pantalla', run: () => go(id) })),
     ...state.accounts.map(a => ({ t: a.name, sub: KIND_NAMES[a.kind] || 'Cuenta', run: () => { activeAccId = a.id; go('cuentas'); } })),
     ...trackedAssets().map(s => ({ t: s + (state.assets[s]?.name ? ' · ' + state.assets[s].name : ''), sub: 'Activo / Gráfico', run: () => { selectedSymbol = s; go('inversiones'); } })),
-    { t: 'Añadir gasto o ingreso', sub: 'Acción rápida', run: () => quickAdd() },
+    { t: 'Añadir gasto, ingreso o traspaso', sub: 'Acción rápida', run: () => quickAdd() },
     { t: 'Nuevo derivado / posición', sub: 'Acción rápida', run: () => editDeriv('') },
     { t: 'Conectar banco, exchange o wallet', sub: 'Conexiones', run: () => openConnectHub() },
-    { t: 'Importar archivo o captura', sub: 'Importador', run: () => $('file-in').click() }
+    { t: 'Importar archivo o captura', sub: 'Importador', run: () => $('file-in').click() },
+    { t: 'Cambiar tema claro u oscuro', sub: 'Preferencia', run: () => act('theme', document.body) },
+    { t: 'Activar u ocultar modo privacidad', sub: 'Privacidad', run: () => act('hide', document.body) },
+    { t: 'Exportar movimientos filtrados (CSV)', sub: 'Exportar', run: () => act('export-tx-csv', document.body) },
+    { t: 'Descargar copia de seguridad (JSON)', sub: 'Copia local', run: () => act('export', document.body) }
   ];
+  let sel = 0, curList = [];
+  const syncSel = () => {
+    const btns = $$('[data-cmd-i]', $('cmd-list'));
+    btns.forEach((b, i) => b.classList.toggle('on', i === sel));
+    btns[sel]?.scrollIntoView({ block: 'nearest' });
+  };
   const paint = () => {
     const q = val('cmd-in').toLowerCase();
-    const list = items.filter(x => !q || x.t.toLowerCase().includes(q) || x.sub.toLowerCase().includes(q)).slice(0, 12);
-    $('cmd-list').innerHTML = list.map((x, i) => '<button type="button" class="cmd-item" data-cmd-i="' + i + '"><b>' + esc(x.t) + '</b><small>' + esc(x.sub) + '</small></button>').join('') || '<p class="muted">Sin coincidencias.</p>';
+    curList = items.filter(x => !q || x.t.toLowerCase().includes(q) || x.sub.toLowerCase().includes(q)).slice(0, 12);
+    sel = 0;
+    $('cmd-list').innerHTML = curList.map((x, i) => '<button type="button" class="cmd-item' + (i === 0 ? ' on' : '') + '" data-cmd-i="' + i + '"><b>' + esc(x.t) + '</b><small>' + esc(x.sub) + '</small></button>').join('') || '<p class="muted">Sin coincidencias.</p>';
     $$('[data-cmd-i]', $('cmd-list')).forEach(b => {
-      b.onclick = () => { $('modal').close(); list[+b.dataset.cmdI].run(); };
+      b.onclick = () => { $('modal').close(); curList[+b.dataset.cmdI].run(); };
     });
   };
   $('cmd-in').oninput = paint;
+  $('cmd-in').onkeydown = e => {
+    if (!curList.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % curList.length; syncSel(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel - 1 + curList.length) % curList.length; syncSel(); }
+    else if (e.key === 'Enter') { e.preventDefault(); $('modal').close(); curList[sel]?.run(); }
+  };
   paint();
+  setTimeout(() => $('cmd-in')?.focus(), 40);
 }
 
 // ===== Drawer móvil, Drawer IA y Gestos =====
@@ -363,8 +415,21 @@ async function act(a, el) {
     case 'clear-filt': filt = { q: '', m: filt.m, cat: '', acc: '', type: '', day: '' }; render(); break;
     case 'add-tx': case 'quick': quickAdd(); break;
     case 'q-save': {
-      const amt = Math.abs(numv('q-amt') || 0), desc = val('q-desc').trim() || catById(val('q-cat')).name;
+      const amt = Math.abs(numv('q-amt') || 0);
       if (!amt) return toast('Escribe el importe.');
+      if (qType === 'xfer') {
+        const from = val('q-acc'), to = val('q-acc-to'), dt = val('q-date') || today();
+        if (!from || !to || from === to) return toast('Elige dos cuentas distintas.');
+        const desc = val('q-desc').trim() || ('Traspaso · ' + accName(from) + ' → ' + accName(to));
+        change(() => {
+          state.tx.push(
+            { id: 't_' + uid(), acc: from, date: dt, desc, amount: round(-amt), bal: null, cat: 'interno', note: '', src: 'manual' },
+            { id: 't_' + uid(), acc: to, date: dt, desc, amount: round(amt), bal: null, cat: 'interno', note: '', src: 'manual' }
+          );
+        }, 'Traspaso guardado');
+        $('modal').close(); break;
+      }
+      const desc = val('q-desc').trim() || catById(val('q-cat')).name;
       change(() => {
         let acc = val('q-acc');
         if (acc === '__cash') { const newA = { id: 'a_' + uid(), name: 'Efectivo', kind: 'cash', inst: '', currency: 'EUR', manualBal: 0 }; state.accounts.push(newA); acc = newA.id; }
@@ -385,7 +450,18 @@ async function act(a, el) {
       change(() => { ensureAsset(sym); state.priceAlerts.unshift({ id: 'pa_' + uid(), sym, dir: val('pa-dir'), target, active: true }); }, 'Alerta de precio creada');
       $('modal').close(); break;
     }
+    case 'pa-toggle': change(() => { const pa = (state.priceAlerts || []).find(x => x.id === id); if (pa) pa.active = !pa.active; }, 'Alerta actualizada'); break;
     case 'pa-del': change(() => { state.priceAlerts = state.priceAlerts.filter(x => x.id !== id); }, 'Alerta eliminada'); break;
+    case 'rm-watch': change(() => { delete state.watchlist[id]; if (selectedSymbol === id) selectedSymbol = watchlistSymbols(buildPortfolioContext().list)[0] || 'BTC'; }, id + ' quitado de seguimiento'); break;
+    case 'export-tx-csv': {
+      const rows = filtered();
+      if (!rows.length) return toast('No hay movimientos para exportar.');
+      const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+      const csv = '\uFEFFFecha;Cuenta;Comercio;Concepto;Categoría;Importe;Saldo;Nota\n'
+        + rows.map(t => [t.date, accName(t.acc), merchantOf(t.desc), t.desc, catById(t.cat).name, t.amount, t.bal ?? '', t.note || ''].map(q).join(';')).join('\n');
+      download('Movimientos_' + (filt.m || 'todos') + '.csv', csv, 'text/csv;charset=utf-8');
+      toast(rows.length + ' movimientos exportados a CSV'); break;
+    }
     case 'theme': change(() => { state.settings.theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; }); break;
     case 'hide': change(() => { state.settings.hide = !state.settings.hide; }); break;
     case 'menu': go('ajustes'); break;
@@ -395,10 +471,13 @@ async function act(a, el) {
       break;
     }
     case 'tx-save': {
-      const cat = val('tx-cat'), note = val('tx-note').trim();
+      const cat = val('tx-cat'), note = val('tx-note').trim(), newAmt = numv('tx-amt'), newDate = val('tx-date'), newDesc = val('tx-desc').trim();
       const t = state.tx.find(x => x.id === id), mer = merchantOf(t.desc), all = $('tx-all')?.checked;
       change(() => {
         t.cat = cat; t.note = note;
+        if (isFinite(newAmt) && newAmt !== 0) t.amount = round(newAmt);
+        if (newDate) t.date = newDate;
+        if (newDesc) t.desc = newDesc;
         if (all) { state.rules = state.rules.filter(r => r.match !== mer); state.rules.unshift({ id: 'r:' + mer, match: mer, cat }); for (const x of state.tx) if (merchantOf(x.desc) === mer) x.cat = cat; }
       }, all ? 'Categoría aplicada a «' + mer + '» (y futuros)' : 'Guardado');
       $('modal').close(); break;
@@ -424,7 +503,14 @@ async function act(a, el) {
       }
       $('modal').close(); break;
     }
-    case 'op-del': change(() => { state.ledger = state.ledger.filter(x => x.id !== id); }, 'Operación eliminada'); $('modal').close(); break;
+    case 'op-del': {
+      const l = state.ledger.find(x => x.id === id);
+      const paired = l && /^man\|/.test(l.ref || '') && state.ledger.filter(x => x.ref === l.ref).length > 1;
+      change(() => {
+        state.ledger = paired ? state.ledger.filter(x => x.ref !== l.ref) : state.ledger.filter(x => x.id !== id);
+      }, paired ? 'Operación y contrapartida eliminadas' : 'Operación eliminada');
+      $('modal').close(); break;
+    }
     case 'asset-save': change(() => { const x = state.assets[id] = state.assets[id] || {}; x.cls = val('as-cls'); x.yahoo = val('as-yahoo').trim(); x.tv = val('as-tv').trim(); x.name = val('as-name').trim(); }, 'Activo guardado'); $('modal').close(); refreshPrices(); break;
     case 'add-deriv': editDeriv(''); break;
     case 'dv-save': {
@@ -463,7 +549,11 @@ async function act(a, el) {
     case 'copy-token': { const t = val('set-token'); if (!t) return toast('Primero genera o pega un TOKEN nuevo.'); await copyText(t, 'TOKEN nuevo copiado. Pégalo como secreto TOKEN en Cloudflare.'); break; }
     case 'copy-worker': try { const r = await fetch('worker.js', { cache: 'no-store' }); if (!r.ok) throw 0; await copyText(await r.text(), 'Código del Worker copiado.'); } catch (e) { toast('No encuentro worker.js junto a la app.'); } break;
     case 'worker-test': {
-      state.settings.worker = val('set-worker').trim().replace(/\/+$/, ''); if (val('set-token').trim()) state.settings.token = val('set-token').trim(); save(false);
+      state.settings.worker = val('set-worker').trim().replace(/\/+$/, '');
+      if ($('set-worker-fallback')) state.settings.workerFallback = val('set-worker-fallback').trim().replace(/\/+$/, '');
+      if (val('set-token').trim()) state.settings.token = val('set-token').trim();
+      if (typeof resetWorkerRoute === 'function') resetWorkerRoute();
+      save(false);
       $('worker-res').innerHTML = '<p class="muted">Probando conexión…</p>';
       try { state.workerInfo = await api('/ping'); } catch (e) { state.workerInfo = { error: e.message }; }
       $('worker-res').innerHTML = workerInfoHTML(state.workerInfo);
@@ -474,13 +564,15 @@ async function act(a, el) {
     case 'sync-off': state.settings.sync = ''; save(false); render(); break;
     case 'sync-now': {
       if ($('set-worker')?.value.trim()) state.settings.worker = $('set-worker').value.trim().replace(/\/+$/, '');
+      if ($('set-worker-fallback')) state.settings.workerFallback = $('set-worker-fallback').value.trim().replace(/\/+$/, '');
       if ($('set-token')?.value.trim()) state.settings.token = $('set-token').value.trim();
       save(false);
       if (!syncOn()) { go('ajustes'); toast('Activa la sincronización en Ajustes.'); break; }
-      await syncNow(true); if (state.settings.worker) syncBalances(); break;
+      await syncNow(true); if (workerEndpoints().length) syncBalances(); break;
     }
     case 'pair-copy': {
       if ($('set-worker')?.value.trim()) state.settings.worker = $('set-worker').value.trim().replace(/\/+$/, '');
+      if ($('set-worker-fallback')) state.settings.workerFallback = $('set-worker-fallback').value.trim().replace(/\/+$/, '');
       if ($('set-token')?.value.trim()) state.settings.token = $('set-token').value.trim();
       if (!state.settings.sync) state.settings.sync = randKey(32);
       state.settings.pushed = -1; save(false);
@@ -490,6 +582,7 @@ async function act(a, el) {
     }
     case 'pair-share': {
       if ($('set-worker')?.value.trim()) state.settings.worker = $('set-worker').value.trim().replace(/\/+$/, '');
+      if ($('set-worker-fallback')) state.settings.workerFallback = $('set-worker-fallback').value.trim().replace(/\/+$/, '');
       if ($('set-token')?.value.trim()) state.settings.token = $('set-token').value.trim();
       if (!state.settings.sync) state.settings.sync = randKey(32);
       state.settings.pushed = -1; save(false);
@@ -516,7 +609,7 @@ document.addEventListener('click', async e => {
   if (d.tx) { editTx(d.tx); return; }
   if (d.fcat != null) { filt.cat = d.fcat; render(); return; }
   if (d.day) { filt.day = filt.day === d.day ? '' : d.day; filt.m = d.day.slice(0, 7); render(); return; }
-  if (d.qtype) { qType = d.qtype; const keep = { a: val('q-amt'), d: val('q-desc'), dt: val('q-date') }; quickAdd(); $('q-amt').value = keep.a; $('q-desc').value = keep.d; $('q-date').value = keep.dt; return; }
+  if (d.qtype) { qType = d.qtype; const keep = { a: val('q-amt'), d: val('q-desc'), dt: val('q-date'), acc: val('q-acc') }; quickAdd(); if ($('q-amt')) $('q-amt').value = keep.a; if ($('q-desc')) $('q-desc').value = keep.d; if ($('q-date')) $('q-date').value = keep.dt; if ($('q-acc') && keep.acc && keep.acc !== '__cash') $('q-acc').value = keep.acc; return; }
   if (d.qcat) { $('q-cat').value = d.qcat; $$('[data-qcat]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); return; }
   if (d.pick) { const box = t.parentElement; box.querySelectorAll('[data-pick]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); const h = box.nextElementSibling; if (h && h.type === 'hidden') h.value = d.pick; return; }
   if (d.goal) { editGoal(d.goal); return; }
@@ -586,12 +679,13 @@ document.addEventListener('keydown', e => {
 });
 $('toast-undo').onclick = undo;
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (state.settings.theme === 'auto') render(); });
-addEventListener('resize', () => { if (ready) render(); });
+let lastNarrow = narrow();
+addEventListener('resize', () => { const n = narrow(); if (ready && n !== lastNarrow) { lastNarrow = n; render(); } });
 
 function refreshAll(force) {
   snapshot();
   if (syncOn()) syncNow();
-  if (state.settings.worker) { if (force || Date.now() - (state.apiTs || 0) > 5 * 60e3) syncBalances(); }
+  if (workerEndpoints().length) { if (force || Date.now() - (state.apiTs || 0) > 5 * 60e3) syncBalances(); }
   else if (state.accounts.length) refreshPrices();
   startLiveStream();
 }
@@ -616,11 +710,11 @@ function init() {
   handleBankCallback();
   if (state.accounts.length) refreshPrices();
   startLiveStream();
-  if (state.settings.worker) { if (!paired) syncNow(); syncBalances(); api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { }); }
+  if (workerEndpoints().length) { if (!paired) { syncNow(); syncBalances(); } api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { }); }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAll(); else stopLiveStream(); });
   addEventListener('online', () => refreshAll());
   addEventListener('focus', () => { if (syncOn()) syncNow(); });
   setInterval(() => { if (document.visibilityState === 'visible' && syncOn()) syncNow(); paintSync(); }, 60e3);
-  setInterval(() => { if (document.visibilityState !== 'visible') return; if (state.settings.worker) syncBalances(); else if (state.accounts.length) refreshPrices(); snapshot(); }, Math.max(5, +state.settings.autoMinutes || 15) * 60e3);
+  setInterval(() => { if (document.visibilityState !== 'visible') return; if (workerEndpoints().length) syncBalances(); else if (state.accounts.length) refreshPrices(); snapshot(); }, Math.max(5, +state.settings.autoMinutes || 15) * 60e3);
 }
 init();

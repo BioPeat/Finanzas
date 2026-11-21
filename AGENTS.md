@@ -16,7 +16,7 @@ Mejorar la app real sin perder datos ni degradar privacidad, claridad o fiabilid
 ## Arquitectura
 - `index.html` + `css/app.css` + `js/*.js`: estado, finanzas, gráficos, importadores, tiempo real, conectores, Copiloto y vistas PC/móvil.
 - `worker.js` w6: CORS/origen, precios, exchanges, mercado, Enable Banking, on-chain, IA y KV `CAUDAL`.
-- `sw.js`: caché `finanzas-v12-14`, actualización y modo sin conexión.
+- `sw.js`: caché `finanzas-v12-16`, actualización y modo sin conexión.
 - `manifest.json`: identidad PWA estable.
 - `actualizar.html`: aplica parches propuestos por IA en una copia y los valida.
 - `tests/`: navegador integral (`smoke.py`) y Worker (`worker_smoke.mjs`).
@@ -39,9 +39,9 @@ Mejorar la app real sin perder datos ni degradar privacidad, claridad o fiabilid
 
 ## Decisiones técnicas y comandos comprobados
 - **Stack**: PWA 100 % vanilla sin `package.json` ni bundler (`index.html`, `css/app.css`, `js/*.js`), `localStorage` (`caudal_v1`), Cloudflare Worker `w6` + KV `CAUDAL` y CI automático en `.github/workflows/check.yml`.
-- **Chequeo estático rápido local** (Node v24 incluido en Antigravity): `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" .agents\skills\verificar-cambios\scripts\check-static.mjs` (o `node .agents/skills/verificar-cambios/scripts/check-static.mjs`).
-- **Pruebas Worker `w6`**: `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" tests\worker_smoke.mjs` (o `node tests/worker_smoke.mjs`).
-- **Pruebas integrales en navegador** (requiere Python + Playwright): `python tests/smoke.py`.
+- **Chequeo estático rápido local**: `node .agents/skills/verificar-cambios/scripts/check-static.mjs` (respaldo: `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" .agents\skills\verificar-cambios\scripts\check-static.mjs`).
+- **Pruebas Worker `w6`**: `node tests/worker_smoke.mjs` (respaldo: `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" tests\worker_smoke.mjs`).
+- **Pruebas integrales en navegador** (Python 3.12 + Playwright Chromium instalados en usuario): `python tests/smoke.py`.
 - **Sincronizar contexto y mapa**: `python tools/sincronizar_version.py` y `python tools/mapa.py`.
 - **Revisión visual local**: usar el subagente integrado `browser` (`Model: "flash"`) en modo lectura/datos de prueba (no hace falta `@playwright/cli`).
 

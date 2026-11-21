@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 
 const source = await fs.readFile(new URL('../worker.js', import.meta.url), 'utf8');
 const mod = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
@@ -31,6 +32,9 @@ const id = 'a'.repeat(32), payload = { updated: 100, baseUpdated: 0, device: 'pc
 r = await call('/sync/' + id, { method: 'PUT', body: JSON.stringify(payload) }); assert.equal(r.status, 200);
 r = await call('/sync/' + id); j = await r.json(); assert.equal(j.data, payload.data); assert.equal(JSON.stringify(j).includes('Santander'), false);
 r = await call('/sync/' + id, { method: 'PUT', body: JSON.stringify({ ...payload, updated: 101, baseUpdated: 99 }) }); assert.equal(r.status, 409);
+const conflictBody = await r.json();
+assert.equal(conflictBody.currentUpdated, 100);
+assert.equal(conflictBody.current?.data, payload.data);
 
 r = await call('/backups/' + id); assert.equal(r.status, 200);
 
@@ -209,6 +213,91 @@ try {
   assert.equal(r.status, 500);
   assert.deepEqual(tried4, ['gemini-3.5-flash-lite']);
   assert.match(j.error, /API key not valid/);
+} finally {
+  globalThis.fetch = origFetch;
+}
+
+// Mirrors, multi-origin ALLOWED_ORIGIN, Enable Banking PKCS#1 + PKCS#8, OKX EEA failover + Funding, and Kraken monotonic nonce
+const envMirrors = {
+  ...env,
+  ALLOWED_ORIGIN: 'https://usuario.github.io, https://otro.github.io',
+  FALLBACK_URLS: 'https://backup1.netlify.app/, https://backup2.example'
+};
+r = await worker.fetch(new Request('https://worker.test/ping', { headers: { Origin: 'https://otro.github.io', 'X-Caudal-Token': env.TOKEN } }), envMirrors);
+j = await r.json();
+assert.equal(r.status, 200);
+assert.equal(r.headers.get('access-control-allow-origin'), 'https://otro.github.io');
+assert.deepEqual(j.mirrors, ['https://backup1.netlify.app', 'https://backup2.example']);
+
+try {
+  // Enable Banking PKCS#8 and PKCS#1 JWT verification
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const pkcs8Pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+  const pkcs1Pem = privateKey.export({ type: 'pkcs1', format: 'pem' });
+  const verifiedJwts = [];
+  globalThis.fetch = async (url, init) => {
+    const auth = init?.headers?.Authorization || '';
+    assert.match(auth, /^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+    const token = auth.slice(7);
+    const [h, p, s] = token.split('.');
+    const valid = crypto.verify('RSA-SHA256', Buffer.from(h + '.' + p), publicKey, Buffer.from(s, 'base64url'));
+    assert.equal(valid, true);
+    verifiedJwts.push(JSON.parse(Buffer.from(h, 'base64url').toString('utf8')).kid);
+    return new Response(JSON.stringify({ aspsps: [{ name: 'Santander', country: 'ES' }] }), { status: 200 });
+  };
+  for (const pem of [pkcs8Pem, pkcs1Pem, pkcs1Pem.replace(/\n/g, '\\n')]) {
+    const envEb = { ...env, ENABLE_BANKING_APP_ID: ' app-id-eb ', ENABLE_BANKING_PRIVATE_KEY: pem };
+    r = await worker.fetch(new Request('https://worker.test/bank/aspsps?country=ES', { headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN } }), envEb);
+    assert.equal(r.status, 200);
+    j = await r.json();
+    assert.equal(j.aspsps[0].name, 'Santander');
+  }
+  assert.deepEqual(verifiedJwts, ['app-id-eb', 'app-id-eb', 'app-id-eb']);
+
+  // OKX EEA failover (50119 on www.okx.com -> eea.okx.com + Funding wallet) & Kraken monotonic nonces
+  const okxUrls = [], krakenNonces = [];
+  const krSec = Buffer.from('secret_bytes_kraken').toString('base64');
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.startsWith('https://www.okx.com')) {
+      okxUrls.push(u);
+      return new Response(JSON.stringify({ code: '50119', msg: "API key doesn't exist" }), { status: 200 });
+    }
+    if (u === 'https://eea.okx.com/api/v5/account/balance') {
+      okxUrls.push(u);
+      return new Response(JSON.stringify({ code: '0', data: [{ details: [{ ccy: 'BTC', eq: '0.25' }] }] }), { status: 200 });
+    }
+    if (u === 'https://eea.okx.com/api/v5/asset/balances') {
+      okxUrls.push(u);
+      return new Response(JSON.stringify({ code: '0', data: [{ ccy: 'EUR', bal: '500' }] }), { status: 200 });
+    }
+    if (u === 'https://eea.okx.com/api/v5/account/positions') {
+      okxUrls.push(u);
+      return new Response(JSON.stringify({ code: '0', data: [] }), { status: 200 });
+    }
+    if (u.startsWith('https://api.kraken.com/0/private/')) {
+      const sp = new URLSearchParams(String(init?.body || ''));
+      krakenNonces.push(BigInt(sp.get('nonce')));
+      return new Response(JSON.stringify({ error: [], result: u.endsWith('/Balance') ? { ZEUR: '120' } : {} }), { status: 200 });
+    }
+    throw new Error('Unexpected fetch URL in smoke test: ' + u);
+  };
+  const envEx = {
+    ...env,
+    OKX_KEY: ' okx_k ', OKX_SECRET: 'okx_s', OKX_PASSPHRASE: 'okx_p',
+    KRAKEN_KEY: ' kr_k ', KRAKEN_SECRET: krSec
+  };
+  r = await worker.fetch(new Request('https://worker.test/balances', { headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN } }), envEx);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.exchanges.okx.assets.BTC, 0.25);
+  assert.equal(j.exchanges.okx.assets.EUR, 500);
+  assert.equal(okxUrls.includes('https://www.okx.com/api/v5/account/balance'), true);
+  assert.equal(okxUrls.includes('https://eea.okx.com/api/v5/account/balance'), true);
+  assert.equal(okxUrls.includes('https://eea.okx.com/api/v5/asset/balances'), true);
+  assert.equal(j.exchanges.kraken.assets.ZEUR, 120);
+  assert.equal(krakenNonces.length, 2);
+  assert.equal(krakenNonces[1] > krakenNonces[0], true);
 } finally {
   globalThis.fetch = origFetch;
 }

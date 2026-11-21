@@ -1,6 +1,6 @@
 // ===== Estado, almacenamiento local, sincronización cifrada y utilidades =====
 "use strict";
-const APP_VERSION = 'v12', APP_REVISION = 14, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
+const APP_VERSION = 'v12', APP_REVISION = 17, STORE = 'caudal_v1', APP_NAME = 'Finanzas';
 
 const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -97,7 +97,7 @@ const ICON = {
   check: '<path d="M20 6L9 17l-5-5"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-  brain: '<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9z"/>',
+  brain: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><circle cx="12" cy="12" r="1.1"/>',
   install: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>',
   gauge: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 14l4-4"/><circle cx="12" cy="18" r="1"/>',
   news: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
@@ -106,13 +106,13 @@ const ICON = {
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   ext: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'
 };
-const ico = (n, s = '') => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' + s + '>' + (ICON[n] || '') + '</svg>';
+const ico = (n, s = '') => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' + s + '>' + (ICON[n] || '') + '</svg>';
 const PAL = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)'];
 
 const LISTS = ['accounts', 'tx', 'ledger', 'derivs', 'rules', 'goals', 'aiNotes', 'priceAlerts', 'aiChats'];
 const MAPS = ['assets', 'costs', 'budgets', 'dismissed', 'watchlist'];
 const SHARED = ['show', 'theme', 'hide', 'lowBal', 'autoMinutes', 'taxYear', 'aiProvider', 'aiModel', 'aiShareDetails'];
-const LOCAL_ONLY = ['worker', 'token', 'sync', 'lastSync', 'lastRemote', 'lastPush', 'pushed', 'deviceId', 'syncRetries'];
+const LOCAL_ONLY = ['worker', 'workerFallback', 'workerMirrors', 'token', 'sync', 'lastSync', 'lastRemote', 'lastPush', 'pushed', 'deviceId', 'syncRetries'];
 
 function defaults() {
   return {
@@ -129,7 +129,7 @@ function defaults() {
     costs: {}, prices: {}, hist: {}, snaps: {}, ohlcv: {}, apiBal: {}, apiDerivs: [],
     rules: [], budgets: {}, dismissed: {}, watchlist: {}, market: {},
     deleted: {}, stamps: {},
-    settings: { show: 'EUR', theme: 'dark', hide: false, lowBal: 100, worker: '', token: '', sync: '', lastSync: 0, lastRemote: 0, lastPush: 0, pushed: 0, autoMinutes: 15, taxYear: 0, gestureHint: true, aiProvider: 'auto', aiModel: '', aiShareDetails: false, deviceId: 'dev_' + uid(), syncRetries: 0 }
+    settings: { show: 'EUR', theme: 'dark', hide: false, lowBal: 100, worker: '', workerFallback: '', workerMirrors: [], token: '', sync: '', lastSync: 0, lastRemote: 0, lastPush: 0, pushed: 0, autoMinutes: 15, taxYear: 0, gestureHint: true, aiProvider: 'auto', aiModel: '', aiShareDetails: false, deviceId: 'dev_' + uid(), syncRetries: 0 }
   };
 }
 
@@ -148,6 +148,7 @@ function migrate(o) {
   for (const r of s.rules) if (!r.id) r.id = 'r:' + r.match;
   for (const t of s.tx) if (t && t.cat === 'otros' && /(?:AJUSTE|SALDO)\s+INICIAL|APERTURA\s+DE\s+CUENTA|REGULARIZACI[OÓ]N\s+INICIAL/i.test(String(t.desc || ''))) t.cat = 'interno';
   s.appRevision = APP_REVISION;
+  if (!Array.isArray(s.settings.workerMirrors)) s.settings.workerMirrors = [];
   if (!s.settings.deviceId) s.settings.deviceId = 'dev_' + uid();
   return s;
 }
@@ -256,32 +257,48 @@ function mergeStates(local, remote) {
   out.updated = Math.max(local.updated || 0, remote.updated || 0);
   return out;
 }
-let syncTimer = 0, syncBusy = false, syncAgain = false, syncState = '';
-const syncOn = () => !!(state.settings.sync && state.settings.worker);
+let syncTimer = 0, syncRetryTimer = 0, syncBusy = false, syncAgain = false, syncState = '';
+const syncOn = () => !!(state.settings.sync && (state.settings.worker || state.settings.workerFallback || (state.settings.workerMirrors && state.settings.workerMirrors.length)));
 function scheduleSync(ms = 1500) { if (!syncOn()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(), ms); }
 async function syncNow(manual = false) {
   if (!syncOn()) return;
   if (syncBusy) { syncAgain = true; return; }
   if (navigator.onLine === false) { syncState = 'off'; paintSync(); return; }
+  clearTimeout(syncRetryTimer); syncRetryTimer = 0;
   syncBusy = true; syncState = 'busy'; paintSync();
   try {
-    const S = state.settings, id = await syncId(), r = await api('/sync/' + id).catch(e => { if (e.status === 404 || /404|no hay copia/i.test(e.message)) return null; throw e; });
+    const S = state.settings, id = await syncId();
     const keep = {}; for (const k of LOCAL_ONLY) keep[k] = S[k];
-    let changed = false;
-    if (r && r.data && r.updated !== keep.lastRemote) {
-      const remote = migrate(await decrypt(r.data));
-      state = migrate(mergeStates(state, remote)); Object.assign(state.settings, keep);
-      state.settings.lastRemote = r.updated; changed = true;
-      if (typeof filt === 'object' && filt && (!filt.m || !state.tx.some(t => monthKey(t.date) === filt.m)) && state.tx.length) {
-        filt.m = state.tx.map(t => monthKey(t.date)).sort().at(-1) || '';
+    let changed = false, conflictCurrent = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = conflictCurrent || await api('/sync/' + id).catch(e => { if (e.status === 404 || /404|no hay copia/i.test(e.message)) return null; throw e; });
+      conflictCurrent = null;
+      if (r && r.data && (r.updated || 0) > (keep.lastRemote || 0)) {
+        const remote = migrate(await decrypt(r.data));
+        state = migrate(mergeStates(state, remote)); Object.assign(state.settings, keep);
+        keep.lastRemote = r.updated;
+        state.settings.lastRemote = r.updated; changed = true;
+        if (typeof filt === 'object' && filt && (!filt.m || !state.tx.some(t => monthKey(t.date) === filt.m)) && state.tx.length) {
+          filt.m = state.tx.map(t => monthKey(t.date)).sort().at(-1) || '';
+        }
       }
-    }
-    if (!r || (state.dirty || 0) !== (state.settings.pushed || 0)) {
+      const needPush = !r || (state.dirty || 0) !== (state.settings.pushed || 0);
+      if (!needPush) break;
       const pushing = state.dirty || 0;
-      const up = Math.max(Date.now(), (r && r.updated || 0) + 1);
-      await api('/sync/' + id, { method: 'PUT', body: JSON.stringify({ updated: up, baseUpdated: (r && r.updated) || 0, device: S.deviceId, data: await encrypt(syncPayload()) }) });
-      state.settings.lastRemote = up; state.settings.lastPush = up; state.settings.pushed = pushing;
-      const check = await api('/sync/' + id); if (check.updated !== up) throw Error('Conflicto de sincronización detectado; se volverá a mezclar.');
+      const baseUpdated = (r && r.updated) || 0;
+      const up = Math.max(Date.now(), baseUpdated + 1, (keep.lastRemote || 0) + 1);
+      try {
+        await api('/sync/' + id, { method: 'PUT', body: JSON.stringify({ updated: up, baseUpdated, device: S.deviceId, data: await encrypt(syncPayload()) }) });
+        keep.lastRemote = up;
+        state.settings.lastRemote = up; state.settings.lastPush = up; state.settings.pushed = pushing;
+        break;
+      } catch (putErr) {
+        if (putErr && putErr.status === 409 && attempt < 2) {
+          conflictCurrent = (putErr.data && putErr.data.current) || null;
+          continue;
+        }
+        throw putErr;
+      }
     }
     state.settings.lastSync = Date.now(); state.settings.syncRetries = 0; state.syncError = '';
     localStorage.setItem(STORE, JSON.stringify(state));
@@ -293,7 +310,7 @@ async function syncNow(manual = false) {
       : rawMsg;
     syncState = 'err'; state.syncError = niceMsg; state.settings.syncRetries = (state.settings.syncRetries || 0) + 1;
     const waits = [5000, 15000, 60000, 300000], wait = waits[Math.min(state.settings.syncRetries - 1, waits.length - 1)];
-    if (syncOn() && navigator.onLine !== false) setTimeout(() => syncNow(false), wait);
+    if (syncOn() && navigator.onLine !== false) syncRetryTimer = setTimeout(() => syncNow(false), wait);
     if (/conflicto/i.test(rawMsg) && state.settings.syncRetries <= 3) syncAgain = true;
     if (manual) toast('No se pudo sincronizar: ' + niceMsg + ' · se reintentará automáticamente.');
   } finally { syncBusy = false; paintSync(); if (syncAgain) { syncAgain = false; scheduleSync(450); } }
@@ -312,13 +329,29 @@ function paintSync() {
   }
   $$('[data-syncstate]').forEach(e => e.innerHTML = '<span class="row" style="gap:8px"><span class="dot ' + clsDot + '"></span>' + txt + (syncState === 'err' && state.syncError ? ' · <span class="down">' + esc(state.syncError) + '</span>' : '') + '</span>');
 }
-function pairLink() { return location.origin + location.pathname + '#pair=' + b64u(new TextEncoder().encode(JSON.stringify({ w: state.settings.worker, t: state.settings.token, s: state.settings.sync }))); }
+function pairLink() {
+  const p = { w: state.settings.worker, t: state.settings.token, s: state.settings.sync };
+  if (state.settings.workerFallback) p.f = state.settings.workerFallback;
+  if (Array.isArray(state.settings.workerMirrors) && state.settings.workerMirrors.length) p.m = state.settings.workerMirrors;
+  return location.origin + location.pathname + '#pair=' + b64u(new TextEncoder().encode(JSON.stringify(p)));
+}
 function readPair() {
   const m = location.hash.match(/#pair=([\w-]+)/); if (!m) return false;
   history.replaceState(null, '', location.pathname + location.search);
   try {
-    const o = JSON.parse(new TextDecoder().decode(ub64(m[1]))); if (!o.s || !o.w) throw 0;
-    Object.assign(state.settings, { worker: o.w, token: o.t || '', sync: o.s, lastSync: 0, lastRemote: 0, lastPush: 0, pushed: -1, syncRetries: 0 });
+    const o = JSON.parse(new TextDecoder().decode(ub64(m[1]))); if (!o.s || (!o.w && !o.f)) throw 0;
+    const hasLocal = !!(state.accounts.length || state.tx.length || state.ledger.length || (state.dirty || 0) > 0);
+    Object.assign(state.settings, {
+      worker: o.w || '',
+      workerFallback: o.f || '',
+      workerMirrors: Array.isArray(o.m) ? o.m : [],
+      token: o.t || '',
+      sync: o.s,
+      lastSync: 0, lastRemote: 0, lastPush: 0,
+      pushed: hasLocal ? -1 : (state.dirty || 0),
+      syncRetries: 0
+    });
+    if (typeof resetWorkerRoute === 'function') resetWorkerRoute();
     state.syncError = '';
     localStorage.setItem(STORE, JSON.stringify(state));
     setTimeout(async () => {

@@ -13,6 +13,15 @@ const rangeDays = () => (RANGES.find(r => r[0] === range) || RANGES[2])[1];
 const RANGE_TXT = { '1S': 'esta semana', '1M': 'en 30 días', '6M': 'en 6 meses', '1A': 'en un año', 'Máx': 'desde el principio' };
 function rangeBtns() { return '<div class="ranges" role="group" aria-label="Periodo">' + RANGES.map(([r]) => '<button type="button" data-range="' + r + '" aria-pressed="' + (range === r) + '">' + r + '</button>').join('') + '</div>'; }
 
+function fmtChartMoney(eur, d = 0, sign = false) {
+  const cur = state.settings.show;
+  let txt;
+  if (cur === 'USD') txt = nf(eur * fx('USD'), d) + ' $';
+  else if (cur === 'BTC') { const p = priceEUR('BTC'); txt = nf(p ? eur / p : 0, 4, 3) + ' BTC'; }
+  else txt = nf(eur, d) + ' €';
+  return (sign && eur > 0 ? '+' : '') + txt;
+}
+
 function svgLine(pts, { h, w, id = 'nw', col, axis = true } = {}) {
   w = w || (narrow() ? 360 : 720); h = h || (narrow() ? 130 : 185);
   if (!pts || pts.length < 2) return '<div class="empty-compact"><b>Histórico en construcción</b><span>La evolución diaria aparecerá conforme se acumulen jornadas o velas de mercado.</span></div>';
@@ -21,18 +30,18 @@ function svgLine(pts, { h, w, id = 'nw', col, axis = true } = {}) {
   const ts = pts.map(p => Date.parse(String(p[0]).slice(0, 10) + 'T12:00:00')), t0 = ts[0], t1 = ts.at(-1), span = t1 - t0;
   const X = i => span > 0 ? ((ts[i] - t0) / span) * w : (i / (pts.length - 1) * w), Yv = v => h - (v - lo) / (hi - lo) * h;
   const d = pts.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yv(p[1]).toFixed(1)).join(' ');
-  col = col || (Math.abs(pts.at(-1)[1] - pts[0][1]) / ref < 0.005 ? 'var(--brand)' : pts.at(-1)[1] >= pts[0][1] ? 'var(--up)' : 'var(--down)');
+  col = col || (Math.abs(pts.at(-1)[1] - pts[0][1]) / ref < 0.005 ? 'var(--ink2)' : pts.at(-1)[1] >= pts[0][1] ? 'var(--up)' : 'var(--down)');
   CHARTS[id] = { type: 'line', pts, ts, t0, span, X, Yv, w, h };
-  const grid = [0.25, 0.5, 0.75].map(f => '<line x1="0" x2="' + w + '" y1="' + (h * f).toFixed(1) + '" y2="' + (h * f).toFixed(1) + '" stroke="var(--line)" stroke-dasharray="2 4"/>').join('');
+  const grid = '<line x1="0" x2="' + w + '" y1="' + (h * 0.5).toFixed(1) + '" y2="' + (h * 0.5).toFixed(1) + '" stroke="var(--line)" stroke-dasharray="3 4" opacity="0.65"/>';
   const midDate = span > 0 ? localDate(new Date((t0 + t1) / 2)) : pts[Math.floor(pts.length / 2)][0];
-  const scaleTicks = '<span class="chart-tick top money num">' + nf(hi, 0) + ' €</span><span class="chart-tick bot money num">' + nf(lo, 0) + ' €</span>';
+  const scaleTicks = '<span class="chart-tick top money num">' + fmtChartMoney(hi, 0) + '</span><span class="chart-tick bot money num">' + fmtChartMoney(lo, 0) + '</span>';
   return '<div class="ichart" data-chart="' + id + '"><svg viewBox="0 0 ' + w + ' ' + (h + 4) + '" preserveAspectRatio="none" role="img" aria-label="Evolución" style="height:' + h + 'px">'
-    + '<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".18"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>'
+    + '<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".14"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>'
     + grid
     + '<path d="' + d + ' L' + w + ' ' + (h + 4) + ' L0 ' + (h + 4) + 'Z" fill="url(#g' + id + ')"/>'
-    + '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
+    + '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
     + '<line class="cur" x1="0" x2="0" y1="0" y2="' + h + '" stroke="var(--ink3)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" visibility="hidden"/>'
-    + '</svg>' + scaleTicks + '<span class="cdot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:' + col + ';border:2px solid var(--panel);transform:translate(-50%,-50%);left:100%;top:' + (Yv(pts.at(-1)[1]) / (h + 4) * 100).toFixed(2) + '%;pointer-events:none"></span><div class="tip" hidden></div></div>'
+    + '</svg>' + scaleTicks + '<span class="cdot" style="position:absolute;width:9px;height:9px;border-radius:50%;background:' + col + ';border:2px solid var(--panel);transform:translate(-50%,-50%);left:100%;top:' + (Yv(pts.at(-1)[1]) / (h + 4) * 100).toFixed(2) + '%;pointer-events:none"></span><div class="tip" hidden></div></div>'
     + (axis ? '<div class="axis"><span>' + fmtDate(pts[0][0], { day: 'numeric', month: 'short' }) + '</span><span>' + fmtDate(midDate, { day: 'numeric', month: 'short' }) + '</span><span>' + fmtDate(pts.at(-1)[0], { day: 'numeric', month: 'short' }) + '</span></div>' : '');
 }
 
@@ -60,9 +69,9 @@ function svgCandles(candles, { h, w, id = 'ohlcv', sym = 'BTC', showSma = true }
       + (hideTxt ? '' : '<text x="' + (w - 3) + '" y="' + (Number(y) + 3.5) + '" text-anchor="end" style="font-size:10px;fill:var(--ink3)">' + nf(valP, valP < 10 ? 4 : 0) + ' ' + unit + '</text>');
   }).join('');
   const liveLine = ly != null
-    ? '<line x1="0" x2="' + plotW + '" y1="' + ly.toFixed(1) + '" y2="' + ly.toFixed(1) + '" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 3" opacity="0.85"/>'
-      + '<rect x="' + (plotW + 2) + '" y="' + (ly - 8.5).toFixed(1) + '" width="' + (axisW - 3) + '" height="17" rx="4" fill="#1d4ed8" stroke="#60a5fa" stroke-width="0.8"/>'
-      + '<text x="' + (w - 4) + '" y="' + (ly + 3.5).toFixed(1) + '" text-anchor="end" style="font-size:9.8px;font-weight:750;fill:#ffffff">' + nf(liveNow, liveNow < 10 ? 4 : 0) + ' ' + unit + '</text>'
+    ? '<line x1="0" x2="' + plotW + '" y1="' + ly.toFixed(1) + '" y2="' + ly.toFixed(1) + '" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/>'
+      + '<rect x="' + (plotW + 2) + '" y="' + (ly - 8.5).toFixed(1) + '" width="' + (axisW - 3) + '" height="17" rx="4" fill="var(--cta-bg)" stroke="var(--line2)" stroke-width="0.8"/>'
+      + '<text x="' + (w - 4) + '" y="' + (ly + 3.5).toFixed(1) + '" text-anchor="end" style="font-size:9.8px;font-weight:700;fill:var(--cta-ink)">' + nf(liveNow, liveNow < 10 ? 4 : 0) + ' ' + unit + '</text>'
     : '';
 
   const smaPath = period => {
@@ -117,32 +126,37 @@ function svgCompare(m) {
   return '<div class="cmp-wrap">'
     + '<div class="cmp-head"><span>Acumulado diario (' + MONTHS[+m.slice(5) - 1] + (hasB ? ' vs. ' + MONTHS[+pm.slice(5) - 1] : '') + ')</span><span class="faint num">' + cmpMeta + '</span></div>'
     + '<div class="ichart" data-chart="cmp"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Gasto acumulado">'
+    + '<defs><linearGradient id="gcmp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--ink)" stop-opacity=".08"/><stop offset="1" stop-color="var(--ink)" stop-opacity="0"/></linearGradient></defs>'
     + '<line x1="0" x2="' + w + '" y1="' + midY + '" y2="' + midY + '" stroke="var(--line)" stroke-dasharray="2 4"/>'
     + '<line x1="0" x2="' + w + '" y1="' + baseY + '" y2="' + baseY + '" stroke="var(--line)"/>'
-    + (hasB ? '<path d="' + P(b) + '" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' : '')
-    + (a.length ? '<path d="' + P(a) + ' L' + X(a.length - 1).toFixed(1) + ' ' + baseY + ' L0 ' + baseY + 'Z" fill="var(--brand-soft)"/><path d="' + P(a) + '" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' : '')
+    + (hasB ? '<path d="' + P(b) + '" fill="none" stroke="var(--ink3)" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' : '')
+    + (a.length ? '<path d="' + P(a) + ' L' + X(a.length - 1).toFixed(1) + ' ' + baseY + ' L0 ' + baseY + 'Z" fill="url(#gcmp)"/><path d="' + P(a) + '" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' : '')
     + '<line class="cur" x1="0" x2="0" y1="0" y2="' + h + '" stroke="var(--ink3)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke" visibility="hidden"/>'
     + '</svg><div class="tip" hidden></div></div>'
     + '<div class="axis"><span>Día 1</span><span>Día ' + Math.round(N / 2) + '</span><span>Día ' + N + '</span></div></div>';
 }
 
 function svgDays(m) {
-  const ds = dailySpend(m), n = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), w = narrow() ? 360 : 720, h = narrow() ? 86 : 96, max = Math.max(1, ...Object.values(ds)), bw = w / n, t = today();
+  const ds = dailySpend(m), n = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), w = narrow() ? 360 : 720, h = narrow() ? 88 : 98, vals = Object.values(ds).filter(v => v > 0), max = Math.max(1, ...vals, 0), bw = w / n, t = today();
+  const avg = vals.length ? sum(vals) / vals.length : 0;
+  const avgY = avg > 0 ? Math.max(4, Math.min(h - 4, h - (avg / max) * h)) : null;
   const data = []; let bars = '';
   for (let d = 1; d <= n; d++) {
-    const k = m + '-' + String(d).padStart(2, '0'), v = ds[k] || 0, bh = v ? Math.max(4, v / max * h) : 2, sel = filt.day === k; data.push([k, v]);
-    bars += '<g data-day="' + k + '" data-i="' + (d - 1) + '" style="cursor:pointer"><rect x="' + ((d - 1) * bw) + '" y="0" width="' + bw + '" height="' + h + '" fill="transparent"/><rect x="' + ((d - 1) * bw + bw * 0.18) + '" y="' + (h - bh) + '" width="' + (bw * 0.64) + '" height="' + bh + '" rx="' + Math.min(4, bw * 0.3) + '" fill="' + (sel ? 'var(--brand)' : k > t ? 'var(--panel2)' : v ? 'color-mix(in srgb,var(--brand) 60%,var(--panel2))' : 'var(--panel2)') + '"/></g>';
+    const k = m + '-' + String(d).padStart(2, '0'), v = ds[k] || 0, bh = v ? Math.max(6, v / max * h) : 2, sel = filt.day === k, isPeak = v > 0 && v === max; data.push([k, v]);
+    const fill = sel ? 'var(--ink)' : k > t ? 'var(--panel2)' : isPeak ? 'var(--ink2)' : v ? 'var(--line2)' : 'var(--panel2)';
+    bars += '<g data-day="' + k + '" data-i="' + (d - 1) + '" style="cursor:pointer"><rect x="' + ((d - 1) * bw) + '" y="0" width="' + bw + '" height="' + h + '" fill="transparent"/><rect x="' + ((d - 1) * bw + bw * 0.2) + '" y="' + (h - bh) + '" width="' + (bw * 0.6) + '" height="' + bh + '" rx="' + Math.min(2, bw * 0.25) + '" fill="' + fill + '"/></g>';
   }
+  const avgLine = avgY != null ? '<line x1="0" x2="' + w + '" y1="' + avgY.toFixed(1) + '" y2="' + avgY.toFixed(1) + '" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 4" opacity="0.65" pointer-events="none"/>' : '';
   CHARTS.days = { type: 'days', data, w, n };
-  return '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-bottom:4px"><span>Gasto por día</span><span class="num">Máx: ' + nf(max, 0) + ' €</span></div>'
-    + '<div class="ichart" data-chart="days"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Gasto por día">' + bars + '</svg><div class="tip" hidden></div></div><div class="axis"><span>1</span><span>15</span><span>' + n + '</span></div>';
+  return '<div class="days-meta"><span>Gasto por día</span><span class="num">' + (avg > 0 ? 'Media ' + fmtChartMoney(avg, 0) + ' · ' : '') + 'Máx ' + fmtChartMoney(max, 0) + '</span></div>'
+    + '<div class="ichart" data-chart="days"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Gasto por día">' + avgLine + bars + '</svg><div class="tip" hidden></div></div><div class="axis"><span>1</span><span>15</span><span>' + n + '</span></div>';
 }
 
 function svgMonths(months) {
   const data = months.map(m => ({ m, ...monthTotals(m) })), w = narrow() ? 360 : 680, h = narrow() ? 120 : 150, max = Math.max(1, ...data.map(d => Math.max(d.inc, d.exp))), bw = w / data.length;
   CHARTS.months = { type: 'bars', data, bw, w };
-  const bars = data.map((d, i) => { const x = i * bw, hi = d.inc / max * h, he = d.exp / max * h; return '<g data-i="' + i + '" data-month="' + d.m + '" style="cursor:pointer"><rect x="' + x + '" y="0" width="' + bw + '" height="' + h + '" fill="transparent"/><rect x="' + (x + bw * 0.18) + '" y="' + (h - hi) + '" width="' + (bw * 0.3) + '" height="' + Math.max(hi, 1) + '" rx="3" fill="var(--up)"/><rect x="' + (x + bw * 0.52) + '" y="' + (h - he) + '" width="' + (bw * 0.3) + '" height="' + Math.max(he, 1) + '" rx="3" fill="var(--brand)"/></g>'; }).join('');
-  return '<div class="ichart" data-chart="months"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Ingresos y gastos por mes">' + bars + '</svg><div class="tip" hidden></div></div><div class="axis">' + data.map(d => '<span style="flex:1;text-align:center">' + MONTHS[+d.m.slice(5) - 1] + '</span>').join('') + '</div><div class="legend"><span><i style="background:var(--up)"></i>Ingresos</span><span><i style="background:var(--brand)"></i>Gastos</span><span class="faint">Toca un mes para abrirlo</span></div>';
+  const bars = data.map((d, i) => { const x = i * bw, hi = d.inc / max * h, he = d.exp / max * h; return '<g data-i="' + i + '" data-month="' + d.m + '" style="cursor:pointer"><rect x="' + x + '" y="0" width="' + bw + '" height="' + h + '" fill="transparent"/><rect x="' + (x + bw * 0.18) + '" y="' + (h - hi) + '" width="' + (bw * 0.3) + '" height="' + Math.max(hi, 1) + '" rx="3" fill="var(--up)"/><rect x="' + (x + bw * 0.52) + '" y="' + (h - he) + '" width="' + (bw * 0.3) + '" height="' + Math.max(he, 1) + '" rx="3" fill="var(--ink2)"/></g>'; }).join('');
+  return '<div class="ichart" data-chart="months"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px" role="img" aria-label="Ingresos y gastos por mes">' + bars + '</svg><div class="tip" hidden></div></div><div class="axis">' + data.map(d => '<span style="flex:1;text-align:center">' + MONTHS[+d.m.slice(5) - 1] + '</span>').join('') + '</div><div class="legend"><span><i style="background:var(--up)"></i>Ingresos</span><span><i style="background:var(--ink2)"></i>Gastos</span><span class="faint">Toca un mes para abrirlo</span></div>';
 }
 
 function spendCalendarHTML(m) {
@@ -157,14 +171,14 @@ function spendCalendarHTML(m) {
     const lvl = !v ? '' : ratio > 0.65 ? 'lvl3' : ratio > 0.28 ? 'lvl2' : 'lvl1';
     cells += '<button type="button" class="cal-day ' + lvl + (filt.day === k ? ' sel' : '') + '" data-day="' + k + '"><span>' + d + '</span>' + (v ? '<small class="money">' + nf(v, 0) + '€</small>' : '') + '</button>';
   }
-  return '<div class="cal-grid">' + cells + '</div><div class="cal-legend"><span>Menor gasto</span><i style="background:var(--panel2)"></i><i style="background:rgba(59,130,246,.22)"></i><i style="background:rgba(245,158,11,.35)"></i><i style="background:rgba(239,68,68,.40)"></i><span>Mayor gasto</span></div><p class="note">Toca cualquier día para filtrar sus movimientos debajo.</p>';
+  return '<div class="cal-grid">' + cells + '</div><div class="cal-legend"><span>Menor gasto</span><i class="cal-sw"></i><i class="cal-sw lvl1"></i><i class="cal-sw lvl2"></i><i class="cal-sw lvl3"></i><span>Mayor gasto</span></div><p class="note">Toca cualquier día para filtrar sus movimientos debajo.</p>';
 }
 
 function donut(entries, { id = 'cats', label = 'Gastado', total } = {}) {
   const T = total ?? sum(entries.map(e => e[1])), r = 64, c = 2 * Math.PI * r; let off = 0;
   CHARTS[id] = { type: 'donut', entries, total: T, label };
-  const segs = entries.map(([k, v, col], i) => { const len = T ? v / T * c : 0, s = '<circle data-seg="' + i + '" cx="82" cy="82" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="16" stroke-linecap="butt" stroke-dasharray="' + Math.max(0, len - 3) + ' ' + c + '" stroke-dashoffset="' + (-off) + '"></circle>'; off += len; return s; }).join('');
-  return '<div class="donut" data-chart="' + id + '"><svg viewBox="0 0 164 164"><circle cx="82" cy="82" r="' + r + '" fill="none" stroke="var(--panel2)" stroke-width="16"/>' + segs + '</svg><div class="center"><b class="money num">' + nf(T, 0) + ' €</b><small>' + esc(label) + '</small></div></div>';
+  const segs = entries.map(([k, v, col], i) => { const len = T ? v / T * c : 0, s = '<circle data-seg="' + i + '" cx="82" cy="82" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="12" stroke-linecap="butt" stroke-dasharray="' + Math.max(0, len - 3) + ' ' + c + '" stroke-dashoffset="' + (-off) + '"></circle>'; off += len; return s; }).join('');
+  return '<div class="donut" data-chart="' + id + '"><svg viewBox="0 0 164 164"><circle cx="82" cy="82" r="' + r + '" fill="none" stroke="var(--panel2)" stroke-width="12"/>' + segs + '</svg><div class="center"><b class="money num">' + fmtChartMoney(T, 0) + '</b><small>' + esc(label) + '</small></div></div>';
 }
 
 function allocBar(parts) {
@@ -186,7 +200,7 @@ function bindCharts(root = document) {
         const p = C.pts[i]; cur(C.X(i));
         const dot = el.querySelector('.cdot'); if (dot) { dot.style.left = (C.X(i) / C.w * 100) + '%'; dot.style.top = (C.Yv(p[1]) / (C.h + 4) * 100) + '%'; }
         const d0 = p[1] - C.pts[0][1];
-        tip.innerHTML = '<span class="money">' + nf(p[1], 0) + ' €</span><small>' + fmtDate(p[0], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + (d0 >= 0 ? '+' : '') + nf(d0, 0) + ' €</small>';
+        tip.innerHTML = '<span class="money">' + fmtChartMoney(p[1], 0) + '</span><small>' + fmtDate(p[0], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + fmtChartMoney(d0, 0, true) + '</small>';
         place(C.X(i) / C.w);
       } else if (C.type === 'candles') {
         const px = Math.min(1, x * (C.w / (C.plotW || C.w)));
@@ -199,15 +213,15 @@ function bindCharts(root = document) {
         place(C.X(i) / C.w);
       } else if (C.type === 'cmp') {
         const i = Math.round(x * (C.N - 1)), a = C.a[i], b = C.b[i]; cur(C.X(i));
-        tip.innerHTML = '<span class="money">Día ' + (i + 1) + ': ' + (a != null ? nf(a, 0) + ' €' : '—') + '</span><small>Mes pasado: ' + (b != null ? nf(b, 0) + ' €' : '—') + '</small>';
+        tip.innerHTML = '<span class="money">Día ' + (i + 1) + ': ' + (a != null ? fmtChartMoney(a, 0) : '—') + '</span><small>Mes pasado: ' + (b != null ? fmtChartMoney(b, 0) : '—') + '</small>';
         place(C.X(i) / C.w);
       } else if (C.type === 'days') {
         const i = Math.min(C.n - 1, Math.floor(x * C.n)), d = C.data[i];
-        tip.innerHTML = '<span class="money">' + nf(d[1], 2) + ' €</span><small>' + fmtDate(d[0], { weekday: 'short', day: 'numeric', month: 'short' }) + '</small>';
+        tip.innerHTML = '<span class="money">' + fmtChartMoney(d[1], 2) + '</span><small>' + fmtDate(d[0], { weekday: 'short', day: 'numeric', month: 'short' }) + '</small>';
         place((i + 0.5) / C.n);
       } else {
         const i = Math.min(C.data.length - 1, Math.floor(x * C.data.length)), d = C.data[i];
-        tip.innerHTML = '<span class="money">+' + nf(d.inc, 0) + ' € · −' + nf(d.exp, 0) + ' €</span><small>' + monthLong(d.m) + ' · ' + (d.inc - d.exp >= 0 ? 'ahorro ' : '') + nf(d.inc - d.exp, 0) + ' €</small>';
+        tip.innerHTML = '<span class="money">' + fmtChartMoney(d.inc, 0, true) + ' · −' + fmtChartMoney(d.exp, 0) + '</span><small>' + monthLong(d.m) + ' · ' + (d.inc - d.exp >= 0 ? 'ahorro ' : '') + fmtChartMoney(d.inc - d.exp, 0) + '</small>';
         place((i + 0.5) / C.data.length);
         svg.querySelectorAll('g[data-i]').forEach(g => g.style.opacity = +g.dataset.i === i ? 1 : 0.45);
       }
@@ -224,8 +238,8 @@ function bindCharts(root = document) {
     const b = el.querySelector('.center b'), s = el.querySelector('.center small');
     const pick = i => {
       el.classList.toggle('focus', i != null); el.querySelectorAll('circle[data-seg]').forEach(c => c.classList.toggle('on', +c.dataset.seg === i));
-      if (i == null) { b.textContent = nf(C.total, 0) + ' €'; s.textContent = C.label; return; }
-      const e = C.entries[i]; b.textContent = nf(e[1], 0) + ' €'; s.textContent = e[3] + ' · ' + nf(C.total ? e[1] / C.total * 100 : 0, 0, 0) + ' %';
+      if (i == null) { b.textContent = fmtChartMoney(C.total, 0); s.textContent = C.label; return; }
+      const e = C.entries[i]; b.textContent = fmtChartMoney(e[1], 0); s.textContent = e[3] + ' · ' + nf(C.total ? e[1] / C.total * 100 : 0, 0, 0) + ' %';
     };
     el.querySelectorAll('circle[data-seg]').forEach(c => { c.style.cursor = 'pointer'; c.addEventListener('pointerenter', () => pick(+c.dataset.seg)); c.addEventListener('click', () => pick(+c.dataset.seg)); });
     el.addEventListener('pointerleave', () => pick(null));

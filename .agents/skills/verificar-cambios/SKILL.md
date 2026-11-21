@@ -26,17 +26,16 @@ Ejecuta el primer nivel aplicable y escala solo si el cambio lo requiere o apare
   - Comprueba que YAML/JSON/Markdown sean válidos, que no falten enlaces referenciados y que ningún archivo de la app (`js/`, `css/`, `index.html`, `worker.js`, `sw.js`, `manifest.json`) haya cambiado por accidente.
 - **Nivel 1 (cualquier cambio en `js/*.js`, `css/app.css`, `index.html`, `sw.js`, `manifest.json`)**:
   - Ejecuta el chequeo estático rápido sin dependencias externas [check-static.mjs](./scripts/check-static.mjs):
-    - En este entorno Windows con Node integrado de Antigravity:
-      `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" .agents\skills\verificar-cambios\scripts\check-static.mjs`
-    - O con Node estándar: `node .agents/skills/verificar-cambios/scripts/check-static.mjs`
+    - `node .agents/skills/verificar-cambios/scripts/check-static.mjs`
+    - Respaldo sin `node` en `PATH`: `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" .agents\skills\verificar-cambios\scripts\check-static.mjs`
   - Criterio de éxito: `Static checks: TODO OK` (`EXIT=0`).
 - **Nivel 2 (cambios en `worker.js`, `tests/worker_smoke.mjs`, sincronización, auth, CORS, KV o conectores del Worker)**:
   - Ejecuta la batería del Worker `w6`:
-    `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" tests\worker_smoke.mjs` (o `node tests/worker_smoke.mjs`).
+    `node tests/worker_smoke.mjs` (o respaldo `& "$env:APPDATA\Antigravity\bin\agy-node.cmd" tests\worker_smoke.mjs`).
   - Criterio de éxito: `Worker smoke: TODO OK` (`EXIT=0`).
 - **Nivel 3 (cambios funcionales en UI, importadores, cálculos, responsive, privacidad o antes de una entrega funcional)**:
-  - Si `python` + Playwright están disponibles en local: ejecuta `python tests/smoke.py` (`TODO OK`) y, si cambiaron versiones o firmas JS, `python tools/sincronizar_version.py` y `python tools/mapa.py`.
-  - Si Python/Playwright no están disponibles en local: registra explícitamente que `tests/smoke.py` queda pendiente para CI (`.github/workflows/check.yml`). Si hubo cambios visuales relevantes, abre la app en servidor local temporal y delega en el subagente integrado `browser` (`Model: "flash"`, solo lectura con datos de prueba) para revisar `390×844` y `1440×900` en claro/oscuro.
+  - Ejecuta `python tests/smoke.py` (`TODO OK`) y, si cambiaron versiones o firmas JS, `python tools/sincronizar_version.py` y `python tools/mapa.py`.
+  - Si hubiera cambios visuales relevantes, complementa abriendo la app en servidor local temporal y delegando en el subagente integrado `browser` (`Model: "flash"`, solo lectura con datos de prueba) para revisar `390×844` y `1440×900` en claro/oscuro.
 
 ## Paso 3 · Escalado ante fallos
 - Filtra la salida de errores en origen (no vuelques logs completos al contexto).

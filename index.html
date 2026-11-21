@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Finanzas</title>
-<meta name="theme-color" content="#090a0d">
+<meta name="theme-color" content="#09090b">
 <meta name="robots" content="noindex">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,21 +12,26 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-maskable-512.png">
-<script>try{var s=JSON.parse(localStorage.getItem('caudal_v1')||'{}').settings||{};var t=s.theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):(s.theme||'dark');document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script>try{var s=JSON.parse(localStorage.getItem('caudal_v1')||'{}').settings||{};var t=s.theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):(s.theme||'dark');document.documentElement.dataset.theme=t;var mc=document.querySelector('meta[name=theme-color]');if(mc)mc.content=t==='light'?'#f6f5f1':'#09090b';}catch(e){}</script>
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <div class="app" id="app-root">
   <aside class="side" aria-label="Navegación">
-    <button class="logo" type="button" data-go="resumen"><img src="icon-192.png" alt="">Finanzas</button>
-    <div id="nav-side"></div>
+    <button class="logo" type="button" data-go="resumen"><img src="icon-192.png" alt=""><span>Finanzas</span></button>
+    <button class="side-search" type="button" data-act="cmd-open" title="Buscar (Ctrl+K)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <span>Buscar</span>
+      <kbd>Ctrl K</kbd>
+    </button>
+    <div class="side-scroll" id="nav-side"></div>
     <div class="side-foot">
       <button class="sync" type="button" data-act="sync-now" id="sync-side"></button>
-      <div class="row" style="justify-content:space-between">
-        <span class="faint" id="ver-side" style="font-size:12px"></span>
-        <span class="row" style="gap:6px">
-          <button class="iconbtn" type="button" data-act="hide" id="hide-side" aria-label="Ocultar importes"></button>
-          <button class="iconbtn" type="button" data-act="theme" id="theme-side" aria-label="Modo claro u oscuro"></button>
+      <div class="side-foot-bar">
+        <span class="faint" id="ver-side"></span>
+        <span class="side-foot-acts">
+          <button class="iconbtn" type="button" data-act="hide" id="hide-side" aria-label="Ocultar importes" title="Ocultar importes"></button>
+          <button class="iconbtn" type="button" data-act="theme" id="theme-side" aria-label="Modo claro u oscuro" title="Cambiar tema"></button>
         </span>
       </div>
     </div>
@@ -34,33 +39,33 @@
   <div class="main-col">
     <header class="desktop-topbar" id="desktop-topbar"></header>
     <header class="topbar">
-      <button class="iconbtn" type="button" data-act="drawer" aria-label="Abrir menú" aria-controls="mobile-drawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-      <img src="icon-192.png" alt="" class="mobile-logo" width="22" height="22">
+      <button class="iconbtn" type="button" data-act="drawer" aria-label="Abrir menú" aria-controls="mobile-drawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <span class="mobile-title" id="mobile-title">Inicio</span>
       <span class="grow"></span>
-      <button class="iconbtn" type="button" data-act="sync-now" id="sync-top" aria-label="Sincronizar"></button>
       <button class="iconbtn" type="button" data-act="hide" id="hide-top" aria-label="Ocultar importes"></button>
-      <button class="iconbtn" type="button" data-act="theme" id="theme-top" aria-label="Modo claro u oscuro"></button>
+      <button class="iconbtn" type="button" data-act="quick" aria-label="Añadir movimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     </header>
     <main id="main"></main>
   </div>
 </div>
-<button class="mobile-fab" type="button" data-act="quick" aria-label="Añadir movimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+<button class="mobile-fab" type="button" data-act="quick" aria-label="Añadir movimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav class="tabs" id="nav-tabs" aria-label="Secciones principales"></nav>
 <div class="drawer-scrim" id="drawer-scrim" data-act="drawer-close"></div>
 <aside class="drawer" id="mobile-drawer" aria-label="Menú" aria-hidden="true">
   <div class="drawer-head">
     <img src="icon-192.png" alt="">
-    <span><b>Finanzas</b><small class="faint" style="display:block" id="ver-drawer"></small></span>
-    <button class="iconbtn" type="button" data-act="drawer-close" aria-label="Cerrar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <span><b>Finanzas</b><small class="faint" id="ver-drawer"></small></span>
+    <button class="iconbtn" type="button" data-act="drawer-close" aria-label="Cerrar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
   </div>
   <div class="drawer-nav" id="nav-drawer"></div>
   <div class="drawer-foot">
-    <button class="sync" type="button" data-act="sync-now" id="sync-drawer"></button>
+    <div class="drawer-foot-row">
+      <button class="sync" type="button" data-act="sync-now" id="sync-drawer"></button>
+      <button class="iconbtn" type="button" data-act="theme" id="theme-top" aria-label="Modo claro u oscuro"></button>
+    </div>
     <div class="quickrow">
       <button class="btn" type="button" data-act="connect-hub">Conectar</button>
       <button class="btn" type="button" data-act="import">Importar</button>
-      <button class="btn primary" type="button" data-act="quick">Apuntar</button>
     </div>
   </div>
 </aside>

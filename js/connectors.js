@@ -1,31 +1,66 @@
 // ===== Conectores automáticos: Exchanges, Open Banking (Enable Banking), Wallets On-Chain y Worker =====
 "use strict";
 
+let activeWorkerBase = '';
+const normBase = u => String(u || '').trim().replace(/\/+$/, '');
+function resetWorkerRoute() { activeWorkerBase = ''; }
+function workerEndpoints() {
+  const raw = [activeWorkerBase, state.settings.worker, state.settings.workerFallback, ...(Array.isArray(state.settings.workerMirrors) ? state.settings.workerMirrors : [])];
+  const seen = new Set(), out = [];
+  for (const u of raw) { const n = normBase(u); if (n && !seen.has(n)) { seen.add(n); out.push(n); } }
+  return out;
+}
+function rememberWorkerMirrors(info) {
+  if (!info || !Array.isArray(info.mirrors)) return;
+  const main = normBase(state.settings.worker);
+  const next = [...new Set(info.mirrors.map(normBase).filter(u => u && u !== main))];
+  const cur = Array.isArray(state.settings.workerMirrors) ? state.settings.workerMirrors : [];
+  if (JSON.stringify(cur) !== JSON.stringify(next)) {
+    state.settings.workerMirrors = next;
+    save(false);
+  }
+}
+
 async function api(path, opts = {}) {
-  const base = String(state.settings.worker || '').replace(/\/+$/, '');
-  if (!base) throw Error('Falta configurar el Worker en Ajustes.');
-  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), opts.timeout || 20000);
-  try {
-    const r = await fetch(base + path, { method: opts.method || 'GET', body: opts.body, headers: { 'X-Caudal-Token': state.settings.token || '', ...(opts.body ? { 'Content-Type': 'application/json' } : {}) }, signal: ctl.signal });
-    const j = await r.json().catch(() => null);
-    const httpErr = (msg) => { const e = Error(msg); e.status = r.status; return e; };
-    if (r.status === 401) throw httpErr((j && j.error) || 'El código TOKEN no coincide. Revísalo en Ajustes.');
-    if (r.status === 403) throw httpErr('Origen bloqueado. En Cloudflare, ALLOWED_ORIGIN debe ser exactamente ' + location.origin + ' (sin barra final). Guarda y vuelve a desplegar el Worker.');
-    if (r.status === 404 && !j?.error) throw httpErr('Ruta no disponible en el Worker (actualiza worker.js a w6 en Cloudflare).');
-    if (!r.ok) throw httpErr((j && j.error) || ('Error del Worker (' + r.status + ')'));
-    return j;
-  } catch (e) {
-    if (e.name === 'AbortError') throw Error('El Worker no responde.');
-    if (e instanceof TypeError) throw Error('No se pudo leer el Worker. Comprueba internet y que ALLOWED_ORIGIN sea exactamente ' + location.origin + ' (sin barra final).');
-    throw e;
-  } finally { clearTimeout(tm); }
+  const bases = workerEndpoints();
+  if (!bases.length) throw Error('Falta configurar el Worker en Ajustes.');
+  const httpErr = (msg, status, data = null) => { const e = Error(msg); e.status = status; e.data = data; return e; };
+  let lastNetErr = null;
+  for (let i = 0; i < bases.length; i++) {
+    const base = bases[i], hasMore = i < bases.length - 1;
+    const ms = hasMore ? Math.min(opts.timeout || 20000, 7500) : (opts.timeout || 20000);
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(base + path, { method: opts.method || 'GET', body: opts.body, headers: { 'X-Caudal-Token': state.settings.token || '', ...(opts.body ? { 'Content-Type': 'application/json' } : {}) }, signal: ctl.signal });
+      if (r.status >= 520 && r.status <= 530 && hasMore) continue;
+      const j = await r.json().catch(() => null);
+      if (r.status === 401) throw httpErr((j && j.error) || 'El código TOKEN no coincide. Revísalo en Ajustes.', r.status, j);
+      if (r.status === 403) throw httpErr('Origen bloqueado. En Cloudflare, ALLOWED_ORIGIN debe ser exactamente ' + location.origin + ' (sin barra final). Guarda y vuelve a desplegar el Worker.', r.status, j);
+      if (r.status === 404 && !j?.error) throw httpErr('Ruta no disponible en el Worker (actualiza worker.js a w6 en Cloudflare).', r.status, j);
+      if (!r.ok) throw httpErr((j && j.error) || ('Error del Worker (' + r.status + ')'), r.status, j);
+      activeWorkerBase = base;
+      if (path === '/ping' || path === '/credentials') rememberWorkerMirrors(j);
+      return j;
+    } catch (e) {
+      if (e.name === 'AbortError' || e instanceof TypeError) {
+        lastNetErr = e;
+        if (hasMore) continue;
+        const hint = bases.length === 1
+          ? ' Si usas *.workers.dev desde España durante bloqueos de red/operadora a Cloudflare, añade una URL de respaldo en Ajustes.'
+          : ' Comprueba tu conexión o las URLs del servidor en Ajustes.';
+        throw Error((e.name === 'AbortError' ? 'El servidor no responde (tiempo agotado).' : 'No se pudo conectar con el servidor.') + hint);
+      }
+      throw e;
+    } finally { clearTimeout(tm); }
+  }
+  throw lastNetErr || Error('No se pudo conectar con el servidor.');
 }
 
 const EXCH = { binance: 'Binance', kraken: 'Kraken', kraken_futures: 'Kraken Futures', kucoin: 'KuCoin', okx: 'OKX', bybit: 'Bybit' };
 let balBusy = false;
 
 async function syncBalances(manual = false) {
-  if (!state.settings.worker || balBusy) return; balBusy = true;
+  if (!workerEndpoints().length || balBusy) return; balBusy = true;
   try {
     const before = clone(state), r = await api('/balances', { timeout: 30000 }), errs = []; let structural = false;
     const derivs = [];
@@ -493,7 +528,7 @@ function openConnectHub(initialTab = 'bancos') {
 
   modal('Conectar bancos, exchanges y wallets', workerBanner + lockedBanner + tabBar + paneBancos + paneKucoin + paneKraken + paneOkx + paneBinanceBybit + paneWallets);
 
-  const mb = $('modalBody');
+  const mb = $('modal-body') || $('modalBody');
   if (!mb) return;
   $$('[data-hub-tab]', mb).forEach(tabBtn => {
     tabBtn.onclick = () => {

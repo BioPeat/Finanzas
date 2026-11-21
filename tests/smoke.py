@@ -48,10 +48,14 @@ async def browser_checks():
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     url = f'http://127.0.0.1:{srv.server_address[1]}/index.html'
     kv = {}
+    sync_opts = {'fail_primary': False, 'stale_get': None, 'conflict_current': None, 'put_count': 0}
     async def worker(route):
-        r = route.request; p = r.url.split('worker.test', 1)[1]
+        r = route.request
+        if sync_opts['fail_primary'] and r.url.startswith('https://worker.test/'):
+            return await route.abort()
+        p = re.split(r'worker(?:-backup)?\.test', r.url, 1)[1]
         if r.headers.get('x-caudal-token') != 'TOKEN-PRUEBA': return await route.fulfill(status=401, json={'error': 'Código incorrecto'})
-        if p.startswith('/ping'): return await route.fulfill(json={'ok': True, 'version': 'w6', 'kv': True, 'originProtected': True, 'openBanking': True, 'onchain': True, 'ohlcv': True, 'ai': {'gemini': True}, 'exchanges': {'binance': True, 'kraken': True, 'kraken_futures': True, 'kucoin': True, 'okx': False, 'bybit': False}})
+        if p.startswith('/ping'): return await route.fulfill(json={'ok': True, 'version': 'w6', 'kv': True, 'originProtected': True, 'openBanking': True, 'onchain': True, 'ohlcv': True, 'ai': {'gemini': True}, 'mirrors': [], 'exchanges': {'binance': True, 'kraken': True, 'kraken_futures': True, 'kucoin': True, 'okx': False, 'bybit': False}})
         if p.startswith('/balances'): return await route.fulfill(json={'exchanges': {
             'binance': {'assets': {'BTC': 0.05, 'ETH': 1, 'USDT': 200, 'EUR': 30}, 'positions': [{'symbol': 'BTCUSDT', 'amt': 0.01, 'side': 'long', 'entry': 60000, 'mark': 65000, 'pnl': 50, 'lev': 5, 'liq': 50000, 'margin': 130, 'exchange': 'binance'}]},
             'kucoin': {'assets': {'KCS': 40, 'USDT': 350}, 'positions': [{'symbol': 'ETHUSDTM', 'amt': 0.5, 'side': 'long', 'entry': 2900, 'mark': 3000, 'pnl': 50, 'lev': 4, 'liq': 2300, 'margin': 375, 'exchange': 'kucoin'}]},
@@ -70,7 +74,17 @@ async def browser_checks():
             return await route.fulfill(json={'text': '### Análisis Gemini\n- Posiciones abiertas verificadas correctamente.', 'provider': 'gemini', 'model': 'gemini-2.5-flash'})
         m = re.match(r'/sync/(\w+)', p)
         if m:
-            if r.method == 'PUT': kv[m.group(1)] = r.post_data; return await route.fulfill(json={'ok': True, 'updated': json.loads(r.post_data).get('updated', 1)})
+            if r.method == 'PUT':
+                sync_opts['put_count'] += 1
+                if sync_opts['conflict_current'] is not None:
+                    cur = sync_opts['conflict_current']; sync_opts['conflict_current'] = None
+                    kv[m.group(1)] = cur
+                    cur_obj = json.loads(cur)
+                    return await route.fulfill(status=409, json={'error': 'Conflicto de sincronización', 'currentUpdated': cur_obj['updated'], 'current': cur_obj})
+                kv[m.group(1)] = r.post_data; return await route.fulfill(json={'ok': True, 'updated': json.loads(r.post_data).get('updated', 1)})
+            if sync_opts['stale_get'] is not None:
+                st = sync_opts['stale_get']; sync_opts['stale_get'] = None
+                return await route.fulfill(body=st, content_type='application/json')
             return await route.fulfill(body=kv[m.group(1)], content_type='application/json') if m.group(1) in kv else await route.fulfill(status=404, json={'error': 'No hay copia (404)'})
         await route.fulfill(status=404, json={'error': 'ruta'})
 
@@ -80,6 +94,7 @@ async def browser_checks():
         pg = await ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.route('https://worker.test/**', worker)
+        await pg.route('https://worker-backup.test/**', worker)
         await pg.route('https://data-api.binance.vision/**', lambda r: asyncio.ensure_future(r.abort()))
         await pg.route('https://s.tradingview.com/**', lambda r: asyncio.ensure_future(r.abort()))
         await pg.clock.set_fixed_time('2026-11-02T20:00:00')
@@ -132,17 +147,36 @@ async def browser_checks():
         check('Impuestos')
 
         print('7. Sincronización cifrada y versión móvil')
-        await ev("go('ajustes')"); await ev("document.querySelector('[data-act=\"sync-on\"]').click()"); await pg.wait_for_timeout(800)
+        await ev("go('ajustes')"); await ev("state.settings.workerFallback='https://worker-backup.test';save(false)"); await ev("document.querySelector('[data-act=\"sync-on\"]').click()"); await pg.wait_for_timeout(800)
         link = await ev("pairLink()")
         ctx2 = await b.new_context(viewport={'width': 390, 'height': 844}, locale='es-ES'); pg2 = await ctx2.new_page()
-        await pg2.route('https://worker.test/**', worker); await pg2.route('https://data-api.binance.vision/**', lambda r: asyncio.ensure_future(r.abort()))
+        await pg2.route('https://worker.test/**', worker); await pg2.route('https://worker-backup.test/**', worker); await pg2.route('https://data-api.binance.vision/**', lambda r: asyncio.ensure_future(r.abort()))
         await pg2.route('https://s.tradingview.com/**', lambda r: asyncio.ensure_future(r.abort()))
+        sync_opts['put_count'] = 0
         await pg2.goto(link); await pg2.wait_for_function("document.body.dataset.ready==='true'"); await pg2.wait_for_timeout(1200)
-        r = await pg2.evaluate("({home:!!document.querySelector('.mobile-home'),tabs:document.querySelectorAll('#nav-tabs button').length,minTap:Math.min(...[...document.querySelectorAll('#nav-tabs button,.mobile-fab,.topbar .iconbtn')].filter(x=>x.offsetParent!==null).map(x=>Math.min(x.getBoundingClientRect().width,x.getBoundingClientRect().height)))})")
+        r = await pg2.evaluate("({home:!!document.querySelector('.mobile-home'),tabs:document.querySelectorAll('#nav-tabs button').length,fb:state.settings.workerFallback,tx:state.tx.length,ss:syncState,minTap:Math.min(...[...document.querySelectorAll('#nav-tabs button,.mobile-fab,.topbar .iconbtn')].filter(x=>x.offsetParent!==null).map(x=>Math.min(x.getBoundingClientRect().width,x.getBoundingClientRect().height)))})")
         ok('Móvil propio, 5 pestañas y controles >= 44 px') if r['home'] and r['tabs'] == 5 and r['minTap'] >= 44 else fail('Diseño móvil: ' + str(r))
+        ok('Vinculación conserva respaldo y móvil vacío no fuerza PUT') if r['fb'] == 'https://worker-backup.test' and r['tx'] == 40 and r['ss'] == 'ok' and sync_opts['put_count'] == 0 else fail('Vinculación móvil: ' + str(r) + ' puts=' + str(sync_opts['put_count']))
         await pg2.evaluate("""(()=>{const fire=(t,x,y)=>document.dispatchEvent(new PointerEvent(t,{bubbles:true,pointerId:7,pointerType:'touch',isPrimary:true,clientX:x,clientY:y}));fire('pointerdown',4,360);fire('pointermove',125,362);fire('pointerup',125,362)})()""")
         ok('Gesto borde izquierdo abre menú') if await pg2.evaluate("document.querySelector('#mobile-drawer').classList.contains('open')") else fail('Gesto borde falló')
         await ctx2.close()
+
+        sync_opts['fail_primary'] = True
+        r_fo = await ev("(async()=>{await syncNow(true);return {ss:syncState,base:activeWorkerBase,err:state.syncError}})()")
+        sync_opts['fail_primary'] = False; await ev("resetWorkerRoute()")
+        ok('Failover automático al respaldo si el Worker principal falla') if r_fo['ss'] == 'ok' and r_fo['base'] == 'https://worker-backup.test' and not r_fo['err'] else fail('Failover falló: ' + str(r_fo))
+
+        sid = await ev("syncId()")
+        stale_obj = json.loads(kv[sid]); stale_obj['updated'] = 1
+        sync_opts['stale_get'] = json.dumps(stale_obj)
+        sync_opts['conflict_current'] = await ev("""(async()=>{
+          const p=syncPayload();
+          p.aiNotes=[...(p.aiNotes||[]),{id:'ai_rem_1',kind:'brief',title:'Remota',text:'OK',t:Date.now(),_m:Date.now()+5000}];
+          return JSON.stringify({updated:(state.settings.lastRemote||Date.now())+5000,baseUpdated:0,device:'rem',data:await encrypt(p)});
+        })()""")
+        await ev("(async()=>{change(()=>{state.aiNotes.push({id:'ai_loc_1',kind:'brief',title:'Local',text:'OK',t:Date.now()})});await syncNow(true)})()")
+        r_409 = await ev("({ss:syncState,err:state.syncError,ids:state.aiNotes.map(n=>n.id)})")
+        ok('Conflicto 409 + KV obsoleto se fusiona y reintenta en silencio') if r_409['ss'] == 'ok' and not r_409['err'] and 'ai_rem_1' in r_409['ids'] and 'ai_loc_1' in r_409['ids'] else fail('Merge 409 falló: ' + str(r_409))
 
         print('8. Mercados velas, Derivados, Copiloto Chat y Responsive')
         await ev("go('inversiones')"); await pg.wait_for_timeout(300)
