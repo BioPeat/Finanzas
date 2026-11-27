@@ -254,8 +254,8 @@ try {
   }
   assert.deepEqual(verifiedJwts, ['app-id-eb', 'app-id-eb', 'app-id-eb']);
 
-  // OKX EEA failover (50119 on www.okx.com -> eea.okx.com + Funding wallet) & Kraken monotonic nonces
-  const okxUrls = [], krakenNonces = [];
+  // OKX EEA failover (50119 on www.okx.com -> eea.okx.com + Funding wallet) & Kraken monotonic nonces & Kraken Futures signing
+  const okxUrls = [], krakenNonces = [], krFutSigned = [];
   const krSec = Buffer.from('secret_bytes_kraken').toString('base64');
   globalThis.fetch = async (url, init) => {
     const u = String(url);
@@ -280,12 +280,26 @@ try {
       krakenNonces.push(BigInt(sp.get('nonce')));
       return new Response(JSON.stringify({ error: [], result: u.endsWith('/Balance') ? { ZEUR: '120' } : {} }), { status: 200 });
     }
+    if (u.startsWith('https://futures.kraken.com/derivatives/api/v3/')) {
+      const signPath = new URL(u).pathname.replace(/^\/derivatives(?=\/)/, '');
+      const sha = crypto.createHash('sha256').update(String(init.headers.Nonce) + signPath, 'utf8').digest();
+      const expectedAuthent = crypto.createHmac('sha512', Buffer.from(krSec, 'base64')).update(sha).digest('base64');
+      assert.equal(init.headers.Authent, expectedAuthent);
+      krFutSigned.push(signPath);
+      if (signPath === '/api/v3/accounts') {
+        return new Response(JSON.stringify({ result: 'success', accounts: { flex: { currencies: { usd: { quantity: 250 } } } } }), { status: 200 });
+      }
+      if (signPath === '/api/v3/openpositions') {
+        return new Response(JSON.stringify({ result: 'success', openPositions: [] }), { status: 200 });
+      }
+    }
     throw new Error('Unexpected fetch URL in smoke test: ' + u);
   };
   const envEx = {
     ...env,
     OKX_KEY: ' okx_k ', OKX_SECRET: 'okx_s', OKX_PASSPHRASE: 'okx_p',
-    KRAKEN_KEY: ' kr_k ', KRAKEN_SECRET: krSec
+    KRAKEN_KEY: ' kr_k ', KRAKEN_SECRET: krSec,
+    KRAKEN_FUTURES_KEY: ' krf_k ', KRAKEN_FUTURES_SECRET: krSec
   };
   r = await worker.fetch(new Request('https://worker.test/balances', { headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN } }), envEx);
   j = await r.json();
@@ -298,6 +312,8 @@ try {
   assert.equal(j.exchanges.kraken.assets.ZEUR, 120);
   assert.equal(krakenNonces.length, 2);
   assert.equal(krakenNonces[1] > krakenNonces[0], true);
+  assert.equal(j.exchanges.kraken_futures.assets.USD, 250);
+  assert.deepEqual(krFutSigned, ['/api/v3/accounts', '/api/v3/openpositions']);
 } finally {
   globalThis.fetch = origFetch;
 }

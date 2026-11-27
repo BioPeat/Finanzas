@@ -101,7 +101,8 @@ async function kraken(env) {
 async function krakenFuturesReq(env, path, params = '') {
   const nonce = String(krakenFuturesLastNonce = Math.max(Date.now(), krakenFuturesLastNonce + 1));
   const key = String(env.KRAKEN_FUTURES_KEY || '').trim(), sec = String(env.KRAKEN_FUTURES_SECRET || '').trim();
-  const msg = params + nonce + path;
+  const signPath = path.replace(/^\/derivatives(?=\/)/, '');
+  const msg = params + nonce + signPath;
   const sha = await crypto.subtle.digest('SHA-256', enc.encode(msg));
   const authent = b64(await hmac('SHA-512', unb64(sec), sha));
   const url = 'https://futures.kraken.com' + path + (params ? '?' + params : '');
