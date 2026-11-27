@@ -314,6 +314,67 @@ try {
   assert.equal(krakenNonces[1] > krakenNonces[0], true);
   assert.equal(j.exchanges.kraken_futures.assets.USD, 250);
   assert.deepEqual(krFutSigned, ['/api/v3/accounts', '/api/v3/openpositions']);
+
+  // Enable Banking /bank/sync: ITAV priority over CLAV/CLBD, Psu-* headers, PDNG filtering, and partial failure isolation
+  const ebHeadersSeen = [];
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.includes('/balances')) {
+      ebHeadersSeen.push({ ip: init?.headers?.['Psu-Ip-Address'], ua: init?.headers?.['Psu-User-Agent'] });
+      if (u.includes('acc_err_tx')) {
+        return new Response(JSON.stringify({ balances: [{ balance_type: 'XPCD', balance_amount: { amount: '930.00', currency: 'EUR' } }] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({
+        balances: [
+          { balance_type: 'CLAV', balance_amount: { amount: '412.94', currency: 'EUR' }, reference_date: '2026-11-26' },
+          { balance_type: 'CLBD', balance_amount: { amount: '412.94', currency: 'EUR' }, reference_date: '2026-11-26' },
+          { balance_type: 'ITAV', balance_amount: { amount: '930.00', currency: 'EUR' }, last_change_date_time: '2026-11-27T14:00:00Z' }
+        ]
+      }), { status: 200 });
+    }
+    if (u.includes('/transactions')) {
+      if (u.includes('acc_err_tx')) {
+        return new Response(JSON.stringify({ message: 'ASPSP_RATE_LIMIT_EXCEEDED' }), { status: 429 });
+      }
+      return new Response(JSON.stringify({
+        transactions: [
+          { entry_reference: 'eb_book_1', status: 'BOOK', booking_date: '2026-11-27', credit_debit_indicator: 'CRDT', transaction_amount: { amount: '517.06', currency: 'EUR' }, remittance_information: ['TRANSFERENCIA'], balance_after_transaction: { amount: '930.00', currency: 'EUR' } },
+          { entry_reference: 'eb_pdng_1', status: 'PDNG', booking_date: '2026-11-27', credit_debit_indicator: 'DBIT', transaction_amount: { amount: '12.00', currency: 'EUR' }, remittance_information: ['RETENCION'] }
+        ]
+      }), { status: 200 });
+    }
+    throw new Error('Unexpected fetch URL in /bank/sync smoke test: ' + u);
+  };
+  const envEbSync = {
+    ...env,
+    ENABLE_BANKING_APP_ID: 'app-id-eb',
+    ENABLE_BANKING_PRIVATE_KEY: pkcs8Pem
+  };
+  r = await worker.fetch(new Request('https://worker.test/bank/sync', {
+    method: 'POST',
+    headers: {
+      Origin: env.ALLOWED_ORIGIN,
+      'X-Caudal-Token': env.TOKEN,
+      'Content-Type': 'application/json',
+      'cf-connecting-ip': '203.0.113.42',
+      'user-agent': 'FinanzasTest/1.0'
+    },
+    body: JSON.stringify({ accounts: [{ uid: 'acc_ok', currency: 'EUR' }, { uid: 'acc_err_tx', currency: 'EUR' }], dateFrom: '2026-11-01' })
+  }), envEbSync);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.accounts.length, 2);
+  assert.equal(j.accounts[0].bal, 930);
+  assert.equal(j.accounts[0].balanceType, 'ITAV');
+  assert.equal(j.accounts[0].tx.length, 1);
+  assert.equal(j.accounts[0].tx[0].id, 'eb_book_1');
+  assert.equal(j.accounts[0].tx[0].bal, 930);
+  assert.equal(j.accounts[1].bal, 930);
+  assert.equal(j.accounts[1].balanceType, 'XPCD');
+  assert.equal(j.accounts[1].tx.length, 0);
+  assert.equal(j.accounts[1].warnings.length, 1);
+  assert.match(j.accounts[1].warnings[0], /429|límite temporal/i);
+  assert.deepEqual(ebHeadersSeen[0], { ip: '203.0.113.42', ua: 'FinanzasTest/1.0' });
 } finally {
   globalThis.fetch = origFetch;
 }

@@ -206,7 +206,7 @@ function editAcc(id) {
     + '<label class="f">Entidad<input type="text" id="ac-inst" value="' + esc(a.inst || '') + '" placeholder="Santander, KuCoin, Kraken, Revolut…"></label>'
     + '<label class="f" id="ac-bal-w">Saldo inicial o manual (€)<input type="number" step="any" id="ac-bal" value="' + esc(a.manualBal ?? '') + '"></label>'
     + '<label class="f wide row" style="gap:8px"><input type="checkbox" id="ac-rs"' + (a.reportsSpain ? ' checked' : '') + '> Esta plataforma informa a Hacienda (entidad española). Si no, cuenta para el modelo 721.</label>'
-    + (a.api ? '<label class="f wide row" style="gap:8px"><input type="checkbox" id="ac-api"' + (a.useApi !== false ? ' checked' : '') + '> Usar los saldos de la API</label>' : '')
+    + ((a.api || a.ebUid) ? '<label class="f wide row" style="gap:8px"><input type="checkbox" id="ac-api"' + (a.useApi !== false ? ' checked' : '') + '> Usar saldo automático ' + (a.ebUid ? 'de Open Banking (PSD2)' : 'de la API') + '</label>' : '')
     + '</div><div class="row" style="margin-top:12px">' + btn('Guardar', 'data-act="acc-save" data-id="' + a.id + '"', 'primary') + (a.id ? btn('Eliminar con sus datos', 'data-act="acc-del" data-id="' + a.id + '"', 'danger') : '') + '</div>');
 }
 
@@ -410,6 +410,7 @@ async function act(a, el) {
     case 'add-watch': openAddWatchModal(); break;
     case 'import': $('file-in').click(); break;
     case 'refresh': await syncBalances(true); break;
+    case 'sync-banks': await syncConnectedBanks(true); break;
     case 'sync-hist': await syncExchangeHistory(id); break;
     case 'prices': await refreshPrices(true); toast('Precios actualizados'); break;
     case 'clear-filt': filt = { q: '', m: filt.m, cat: '', acc: '', type: '', day: '' }; render(); break;

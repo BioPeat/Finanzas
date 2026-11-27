@@ -498,6 +498,30 @@ async function ebReq(env, path, opts = {}) {
   const jwt = await enableBankingJWT(env);
   return getJSON('https://api.enablebanking.com' + path, { ...opts, headers: { Authorization: 'Bearer ' + jwt, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
 }
+function ebPsuHeaders(req) {
+  const h = {};
+  const ip = (req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+  const ua = String(req.headers.get('user-agent') || '').trim().slice(0, 256);
+  if (ip) h['Psu-Ip-Address'] = ip;
+  if (ua) h['Psu-User-Agent'] = ua;
+  return h;
+}
+function pickEnableBankingBalance(bals) {
+  if (!Array.isArray(bals) || !bals.length) return null;
+  const order = ['ITAV', 'XPCD', 'ITBD', 'CLAV', 'CLBD', 'FWAV', 'OPAV', 'OPBD'];
+  const stamp = b => String(b?.last_change_date_time || b?.reference_date || '');
+  for (const tp of order) {
+    const matches = bals.filter(x => x && x.balance_type === tp && x.balance_amount && Number.isFinite(+x.balance_amount.amount));
+    if (matches.length) return matches.sort((a, b) => stamp(b).localeCompare(stamp(a)))[0];
+  }
+  return bals.find(x => x && x.balance_amount && Number.isFinite(+x.balance_amount.amount)) || bals[0];
+}
+function formatEbError(err) {
+  const msg = String(err?.message || err || 'Error desconocido');
+  if (/\b(401|403)\b|EXPIRED|UNAUTHORIZED|INVALID_SESSION/i.test(msg)) return msg + ' (sesión PSD2 caducada: vuelve a autorizar el banco en Conectar)';
+  if (/\b429\b|RATE_LIMIT|ACCESS_EXCEEDED/i.test(msg)) return msg + ' (límite temporal del banco PSD2; reintenta más tarde)';
+  return msg;
+}
 
 // ---------- Copiloto multi-proveedor: chat, análisis, categorización e importación IA ----------
 function aiProviders(env) { return { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY, custom: !!(env.AI_BASE_URL && env.AI_API_KEY) }; }
@@ -798,48 +822,76 @@ export default {
       if (url.pathname === '/bank/auth' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
         const valid = new Date(Date.now() + 89 * 864e5).toISOString();
-        const r = await ebReq(await getEffEnv(), '/auth', { method: 'POST', body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
+        const r = await ebReq(await getEffEnv(), '/auth', { method: 'POST', headers: ebPsuHeaders(req), body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
         return respond(r);
       }
       if (url.pathname === '/bank/session' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
-        return respond(await ebReq(await getEffEnv(), '/sessions', { method: 'POST', body: JSON.stringify({ code: b.code }) }));
+        return respond(await ebReq(await getEffEnv(), '/sessions', { method: 'POST', headers: ebPsuHeaders(req), body: JSON.stringify({ code: b.code }) }));
       }
       if (url.pathname === '/bank/sync' && req.method === 'POST') {
         const effEnv = await getEffEnv();
+        const psuHeaders = ebPsuHeaders(req);
         const b = JSON.parse(await req.text()), accounts = [], errors = [];
         for (const acc of b.accounts || []) {
           try {
             const qs1 = new URLSearchParams();
             if (b.dateFrom) qs1.set('date_from', b.dateFrom);
             const qStr1 = qs1.toString();
-            const [balRes, firstTxRes] = await Promise.all([
-              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/balances'),
-              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + (qStr1 ? '?' + qStr1 : ''))
+            const [balSettled, txSettled] = await Promise.allSettled([
+              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/balances', { headers: psuHeaders }),
+              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + (qStr1 ? '?' + qStr1 : ''), { headers: psuHeaders })
             ]);
-            const rawTx = [...(firstTxRes.transactions || [])];
-            let cont = firstTxRes.continuation_key || '', page = 1;
-            while (cont && page < 3) {
-              const qs = new URLSearchParams();
-              if (b.dateFrom) qs.set('date_from', b.dateFrom);
-              qs.set('continuation_key', cont);
-              const nextTx = await ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions?' + qs.toString());
-              rawTx.push(...(nextTx.transactions || []));
-              cont = nextTx.continuation_key || '';
-              page++;
+            if (balSettled.status === 'rejected' && txSettled.status === 'rejected') {
+              errors.push(acc.uid + ': ' + formatEbError(balSettled.reason));
+              continue;
             }
-            const bals = balRes.balances || [];
-            const firstBal = ['CLAV', 'ITAV', 'XPCD', 'CLBD'].map(tp => bals.find(x => x.balance_type === tp)).find(Boolean) || bals[0];
-            const bal = firstBal && firstBal.balance_amount ? +firstBal.balance_amount.amount : null;
-            const cur = firstBal && firstBal.balance_amount ? firstBal.balance_amount.currency : (acc.currency || 'EUR');
-            const tx = rawTx.map(t => {
-              const amt = +(t.transaction_amount && t.transaction_amount.amount || 0);
-              const signed = t.credit_debit_indicator === 'DBIT' ? -Math.abs(amt) : t.credit_debit_indicator === 'CRDT' ? Math.abs(amt) : amt;
-              const desc = [...(t.remittance_information || []), t.creditor?.name, t.debtor?.name].filter(Boolean).join(' · ') || 'Movimiento bancario';
-              return { id: t.entry_reference || t.transaction_id || '', date: (t.booking_date || t.value_date || '').slice(0, 10), desc, amount: signed, currency: (t.transaction_amount && t.transaction_amount.currency) || cur };
-            }).filter(x => x.date && Number.isFinite(x.amount));
-            accounts.push({ uid: acc.uid, bal, currency: cur, tx });
-          } catch (e) { errors.push(acc.uid + ': ' + e.message); }
+            const warnings = [];
+            let bal = null, cur = acc.currency || 'EUR', balanceType = '', referenceDate = '';
+            if (balSettled.status === 'fulfilled') {
+              const firstBal = pickEnableBankingBalance(balSettled.value?.balances || []);
+              const rawAmt = firstBal?.balance_amount?.amount;
+              bal = rawAmt != null && rawAmt !== '' && Number.isFinite(+rawAmt) ? +rawAmt : null;
+              cur = firstBal?.balance_amount?.currency || cur;
+              balanceType = firstBal?.balance_type || '';
+              referenceDate = firstBal?.reference_date || '';
+            } else {
+              warnings.push('Saldo: ' + formatEbError(balSettled.reason));
+            }
+            const rawTx = [];
+            if (txSettled.status === 'fulfilled') {
+              const firstTxRes = txSettled.value || {};
+              rawTx.push(...(firstTxRes.transactions || []));
+              let cont = firstTxRes.continuation_key || '', page = 1;
+              while (cont && page < 5) {
+                try {
+                  const qs = new URLSearchParams();
+                  if (b.dateFrom) qs.set('date_from', b.dateFrom);
+                  qs.set('continuation_key', cont);
+                  const nextTx = await ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions?' + qs.toString(), { headers: psuHeaders });
+                  rawTx.push(...(nextTx.transactions || []));
+                  cont = nextTx.continuation_key || '';
+                  page++;
+                } catch (pageErr) {
+                  warnings.push('Movimientos (pág. ' + (page + 1) + '): ' + formatEbError(pageErr));
+                  break;
+                }
+              }
+            } else {
+              warnings.push('Movimientos: ' + formatEbError(txSettled.reason));
+            }
+            const tx = rawTx
+              .filter(t => String(t?.status || '').toUpperCase() !== 'PDNG')
+              .map(t => {
+                const amt = +(t.transaction_amount && t.transaction_amount.amount || 0);
+                const signed = t.credit_debit_indicator === 'DBIT' ? -Math.abs(amt) : t.credit_debit_indicator === 'CRDT' ? Math.abs(amt) : amt;
+                const desc = [...(t.remittance_information || []), t.creditor?.name, t.debtor?.name].filter(Boolean).join(' · ') || 'Movimiento bancario';
+                const rawAfter = t.balance_after_transaction?.amount;
+                const balAfter = rawAfter != null && rawAfter !== '' && Number.isFinite(+rawAfter) ? +rawAfter : null;
+                return { id: t.entry_reference || t.transaction_id || '', date: (t.booking_date || t.value_date || t.transaction_date || '').slice(0, 10), desc, amount: signed, bal: balAfter, currency: (t.transaction_amount && t.transaction_amount.currency) || cur };
+              }).filter(x => x.date && Number.isFinite(x.amount));
+            accounts.push({ uid: acc.uid, bal, currency: cur, balanceType, referenceDate, tx, warnings });
+          } catch (e) { errors.push(acc.uid + ': ' + formatEbError(e)); }
         }
         return respond({ accounts, errors, ts: Date.now() });
       }

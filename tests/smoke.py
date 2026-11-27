@@ -72,6 +72,30 @@ async def browser_checks():
             return await route.fulfill(json={'trending': [{'symbol': 'BTC', 'price': 65000, 'change': 2.1}, {'symbol': 'SOL', 'price': 150, 'change': 9}], 'news': [{'title': 'Resumen del mercado', 'url': 'https://example.com', 'publisher': 'Fuente'}], 'quotes': []})
         if p.startswith('/ai'):
             return await route.fulfill(json={'text': '### Análisis Gemini\n- Posiciones abiertas verificadas correctamente.', 'provider': 'gemini', 'model': 'gemini-2.5-flash'})
+        if p == '/bank/sync':
+            req_body = json.loads(r.post_data or '{}')
+            accs_out = []
+            for req_acc in req_body.get('accounts', []):
+                uid_b = req_acc.get('uid')
+                if uid_b == 'eb_santander_1':
+                    accs_out.append({
+                        'uid': uid_b, 'bal': 930.00, 'currency': 'EUR', 'balanceType': 'ITAV',
+                        'tx': [
+                            {'id': 'eb_dup_1', 'date': '2026-11-02', 'desc': 'Bizum Ana Lopez', 'amount': 45.00, 'bal': 412.94, 'currency': 'EUR'},
+                            {'id': 'eb_new_1', 'date': '2026-11-27', 'desc': 'Ingreso nómina extra', 'amount': 517.06, 'bal': 930.00, 'currency': 'EUR'}
+                        ],
+                        'warnings': []
+                    })
+                elif uid_b == 'eb_santander_only':
+                    accs_out.append({
+                        'uid': uid_b, 'bal': 930.00, 'currency': 'EUR', 'balanceType': 'ITAV',
+                        'tx': [
+                            {'id': 'eb_only_1', 'date': '2026-11-25', 'desc': 'Compra supermercado', 'amount': -18.00, 'bal': None, 'currency': 'EUR'},
+                            {'id': 'eb_only_2', 'date': '2026-11-26', 'desc': 'Alquiler', 'amount': -500.00, 'bal': None, 'currency': 'EUR'}
+                        ],
+                        'warnings': []
+                    })
+            return await route.fulfill(json={'accounts': accs_out, 'errors': [], 'ts': 1764250000000})
         m = re.match(r'/sync/(\w+)', p)
         if m:
             if r.method == 'PUT':
@@ -134,6 +158,27 @@ async def browser_checks():
         await ev("document.querySelector('[data-act=\"worker-test\"]').click()"); await pg.wait_for_timeout(800)
         r = await ev("({acc:state.accounts.find(a=>a.api==='kucoin')?.name,btc:priceEUR('BTC'),nw:netWorth().total,der:derivRows().length,version:state.workerInfo?.version==='w6'})")
         ok(f"Worker w6 conectado, patrimonio {round(r['nw'])} €, {r['der']} derivados") if r['version'] and r['acc'] == 'KuCoin' and r['btc'] > 50000 and r['der'] == 2 else fail('Worker w6: ' + str(r))
+        # Open Banking PSD2 Santander: saldo en vivo 930 € sin doble conteo ni duplicado de Excel previo
+        r_eb = await ev("""(async()=>{
+          const sAcc = state.accounts[0];
+          sAcc.ebUid = 'eb_santander_1';
+          const beforeN = state.tx.length;
+          await syncConnectedBanks(true, { force: true });
+          const balMerged = bankBalance(sAcc);
+          const afterN = state.tx.length;
+          const solo = { id: 'a_eb_solo', name: 'Santander PSD2', kind: 'bank', inst: 'Santander', currency: 'EUR', manualBal: 0, ebUid: 'eb_santander_only' };
+          state.accounts.push(solo);
+          await syncConnectedBanks(true, { force: true });
+          const balSolo = bankBalance(solo);
+          state.accounts = state.accounts.filter(a => a.id !== 'a_eb_solo');
+          state.tx = state.tx.filter(t => t.acc !== 'a_eb_solo' && t.extId !== 'eb_new_1');
+          delete state.apiBal['a_eb_solo'];
+          delete state.apiBal[sAcc.id];
+          delete sAcc.ebUid; delete sAcc.ebBal; delete sAcc.ebBalTs; delete sAcc.ebLastError;
+          save(false);
+          return { beforeN, afterN, balMerged, balSolo };
+        })()""")
+        ok(f"Open Banking Santander en vivo ({r_eb['balMerged']} € / {r_eb['balSolo']} €)") if abs(r_eb['balMerged'] - 930.0) < 0.01 and abs(r_eb['balSolo'] - 930.0) < 0.01 and r_eb['afterN'] == r_eb['beforeN'] + 1 else fail('Open Banking Santander: ' + str(r_eb))
         check('Worker')
 
         print('6. Historiales e impuestos FIFO')

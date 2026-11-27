@@ -76,8 +76,13 @@ async function syncBalances(manual = false) {
     state.apiDerivs = derivs; state.apiErrors = errs; state.apiTs = Date.now();
     if (structural) { stampChanges(before); save(); } else save(false);
     await syncOnChainWallets(false);
-    await syncConnectedBanks(false);
+    const bankRes = await syncConnectedBanks(false, { force: manual });
+    if (bankRes?.errors?.length) {
+      errs.push(...bankRes.errors);
+      state.apiErrors = errs;
+    }
     await refreshPrices();
+    snapshot();
     if (manual) toast(errs.length ? 'Actualizado con avisos: ' + errs.join(' · ') : 'Saldos y derivados actualizados');
   } catch (e) { state.apiErrors = [e.message]; if (manual) toast(e.message); }
   finally { balBusy = false; if (ready) render(); }
@@ -177,6 +182,9 @@ async function startBankAuth(aspspName, country) {
   } catch (e) { toast('Open Banking: ' + e.message); }
 }
 
+const normIban = s => String(s || '').replace(/\s+/g, '').toUpperCase();
+let lastBankSyncAt = 0;
+
 async function handleBankCallback() {
   const sp = new URLSearchParams(location.search);
   const code = sp.get('code'), st = sp.get('state');
@@ -190,39 +198,94 @@ async function handleBankCallback() {
     if (!accs.length) return toast('El banco no devolvió cuentas autorizadas.');
     change(() => {
       for (const ba of accs) {
-        const uidB = ba.uid, iban = ba.account_id?.iban || '';
-        let a = state.accounts.find(x => x.ebUid === uidB || (iban && x.iban === iban));
+        const uidB = ba.uid, iban = normIban(ba.account_id?.iban || '');
+        let a = state.accounts.find(x => x.ebUid === uidB || (iban && normIban(x.iban) === iban));
         if (!a) {
           a = { id: 'a_' + uid(), name: (meta.aspspName || 'Banco') + (iban ? ' ·' + iban.slice(-4) : ''), kind: 'bank', inst: meta.aspspName || '', currency: ba.currency || 'EUR', iban, manualBal: 0 };
           state.accounts.push(a);
+        } else if (iban && normIban(a.iban) !== iban) {
+          a.iban = iban;
         }
-        a.ebUid = uidB; a.ebSessionId = r.session_id || ''; a.ebValidUntil = r.access?.valid_until || addDays(today(), 89);
+        a.ebUid = uidB; a.ebSessionId = r.session_id || ''; a.ebValidUntil = r.access?.valid_until || addDays(today(), 89); a.ebLastError = '';
       }
     }, accs.length + ' cuenta(s) bancaria(s) conectada(s)');
-    await syncConnectedBanks(true);
+    await syncConnectedBanks(true, { force: true });
   } catch (e) { toast('Error al finalizar conexión bancaria: ' + e.message); }
 }
 
-async function syncConnectedBanks(manual = false) {
+async function syncConnectedBanks(manual = false, opts = {}) {
   const ebAccs = state.accounts.filter(a => a.ebUid);
-  if (!ebAccs.length || !state.settings.worker) return;
+  if (!ebAccs.length || !workerEndpoints().length) return { updated: 0, added: 0, errors: [] };
+  if (!manual && !opts.force && lastBankSyncAt && Date.now() - lastBankSyncAt < 3 * 60e3) return { updated: 0, added: 0, errors: [] };
   try {
     const r = await api('/bank/sync', { method: 'POST', timeout: 30000, body: JSON.stringify({ accounts: ebAccs.map(a => ({ uid: a.ebUid, currency: a.currency || 'EUR' })), dateFrom: addDays(today(), -60) }) });
-    let added = 0;
-    change(() => {
-      const seen = new Set(state.tx.map(txKey));
-      for (const res of r.accounts || []) {
-        const a = state.accounts.find(x => x.ebUid === res.uid); if (!a) continue;
-        if (res.bal != null && isFinite(res.bal)) a.manualBal = res.bal;
-        (res.tx || []).forEach((p, i) => {
-          const t = { id: 't_' + uid() + i, acc: a.id, date: p.date, desc: p.desc, amount: round(p.amount), bal: null, ord: i, src: 'enablebanking' };
-          t.cat = categorize(t); const k = txKey(t);
-          if (!seen.has(k)) { seen.add(k); state.tx.push(t); added++; }
-        });
+    let added = 0, updated = 0, structural = false;
+    const bankErrs = [];
+    const before = clone(state);
+    for (const rawErr of r.errors || []) {
+      const m = String(rawErr || '').match(/^([^:]+):\s*(.*)$/);
+      const a = m && state.accounts.find(x => x.ebUid === m[1]);
+      const msg = m ? m[2] : String(rawErr || 'Error desconocido');
+      if (a) {
+        if ((a.ebLastError || '') !== msg) { a.ebLastError = msg; structural = true; }
+        bankErrs.push(a.name + ': ' + msg);
+      } else {
+        bankErrs.push(msg);
       }
-    }, '');
-    if (manual) toast(added ? added + ' movimientos bancarios sincronizados' : 'Bancos conectados al día');
-  } catch (e) { if (manual) toast('Bancos PSD2: ' + e.message); }
+    }
+    const seenKey = new Set(state.tx.map(txKey));
+    for (const res of r.accounts || []) {
+      const a = state.accounts.find(x => x.ebUid === res.uid); if (!a) continue;
+      const warnMsg = (res.warnings || []).join(' · ');
+      if ((a.ebLastError || '') !== warnMsg) { a.ebLastError = warnMsg; structural = true; }
+      for (const w of res.warnings || []) bankErrs.push(a.name + ': ' + w);
+      if (res.bal != null && isFinite(res.bal)) {
+        const cur = res.currency || a.currency || 'EUR', valBal = round(res.bal);
+        state.apiBal[a.id] = { ts: Date.now(), assets: { [cur]: valBal }, src: 'enablebanking', balanceType: res.balanceType || '' };
+        if (a.ebBal !== valBal) { a.ebBal = valBal; structural = true; }
+        a.ebBalTs = Date.now();
+        updated++;
+      }
+      const seenExt = new Set(state.tx.filter(t => t.acc === a.id && t.extId).map(t => t.extId));
+      const importedCounts = new Map();
+      for (const t of state.tx) {
+        if (t.acc === a.id && t.src !== 'enablebanking') {
+          const ik = t.date + '|' + round(t.amount);
+          importedCounts.set(ik, (importedCounts.get(ik) || 0) + 1);
+        }
+      }
+      (res.tx || []).forEach((p, i) => {
+        if (p.id && seenExt.has(p.id)) return;
+        const balVal = p.bal != null && isFinite(p.bal) ? round(p.bal) : null;
+        const t = { id: 't_' + uid() + i, acc: a.id, date: p.date, desc: p.desc, amount: round(p.amount), bal: balVal, ord: i, src: 'enablebanking', ...(p.id ? { extId: p.id } : {}) };
+        t.cat = categorize(t);
+        const k = txKey(t);
+        if (seenKey.has(k)) return;
+        const ik = t.date + '|' + t.amount;
+        const impLeft = importedCounts.get(ik) || 0;
+        if (impLeft > 0) { importedCounts.set(ik, impLeft - 1); return; }
+        seenKey.add(k);
+        if (p.id) seenExt.add(p.id);
+        state.tx.push(t);
+        added++;
+        structural = true;
+      });
+    }
+    if (structural) { stampChanges(before); save(); } else save(false);
+    lastBankSyncAt = Date.now();
+    snapshot();
+    if (manual) {
+      const ebPrefix = new RegExp('^(' + ebAccs.map(a => a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + '):');
+      state.apiErrors = [...(state.apiErrors || []).filter(e => !ebPrefix.test(e) && !/^Bancos PSD2:/i.test(e)), ...bankErrs];
+      if (bankErrs.length) toast('Bancos PSD2: ' + bankErrs.join(' · '));
+      else toast(added ? added + ' movimientos bancarios sincronizados' : updated ? 'Saldo bancario actualizado' : 'Bancos conectados al día');
+      if (ready) render();
+    }
+    return { updated, added, errors: bankErrs };
+  } catch (e) {
+    if (manual) toast('Bancos PSD2: ' + e.message);
+    return { updated: 0, added: 0, errors: ['Bancos PSD2: ' + e.message] };
+  }
 }
 
 const VAULT_GROUPS = {

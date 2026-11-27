@@ -61,46 +61,46 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `trackedAssets()` · js/finance.js:99
 ### Cartera, saldos y derivados en tiempo real · línea 108
 - `bankBalance(a)` · js/finance.js:109
-- `positionRows()` · js/finance.js:117
-- `accValue(a, rows)` · js/finance.js:129
-- `derivRows()` · js/finance.js:131
-- `derivSummary()` · js/finance.js:171
-- `netWorth()` · js/finance.js:183
-- `investmentSummary()` · js/finance.js:190
-- `snapshot()` · js/finance.js:203
-- `bankHistory(days = 365)` · js/finance.js:209
-- `reliableHistory(points)` · js/finance.js:220
-- `netSeries(days)` · js/finance.js:231
-- `changeWindow(days)` · js/finance.js:244
-- `invSeries(days)` · js/finance.js:264
-### Flujo mensual, previsiones y alertas · línea 287
-- `monthTotals(m = monthKey(today()` · js/finance.js:288
-- `lastMonths(n)` · js/finance.js:295
-- `recurring()` · js/finance.js:297
-- `liquidity()` · js/finance.js:309
-- `avgMonthlyExpense()` · js/finance.js:310
-- `cushion()` · js/finance.js:315
-- `pace()` · js/finance.js:316
-- `upcoming(days = 31)` · js/finance.js:321
-- `forecast()` · js/finance.js:334
-- `safeToSpend()` · js/finance.js:346
-- `topMerchants(m, n = 5)` · js/finance.js:353
-- `dailySpend(m)` · js/finance.js:354
-- `goalSaved(g)` · js/finance.js:355
-- `alerts()` · js/finance.js:357
-### Fiscalidad España (FIFO, base del ahorro, Modelo 721) · línea 380
-- `cuotaAhorro(base)` · js/finance.js:382
-- `matchTransfers(L)` · js/finance.js:383
-- `taxGroups()` · js/finance.js:392
-- `taxPrefetch(onStep)` · js/finance.js:397
-- `taxCompute()` · js/finance.js:408
-- `costBasis()` · js/finance.js:453
-- `balancesAt(date)` · js/finance.js:454
-- `modelo721(year)` · js/finance.js:455
-- `taxSummary(year, extra = 0)` · js/finance.js:461
-- `byCoin(disp)` · js/finance.js:466
-- `taxCSV(year)` · js/finance.js:467
-- `taxAIText(year)` · js/finance.js:476
+- `positionRows()` · js/finance.js:123
+- `accValue(a, rows)` · js/finance.js:135
+- `derivRows()` · js/finance.js:137
+- `derivSummary()` · js/finance.js:177
+- `netWorth()` · js/finance.js:189
+- `investmentSummary()` · js/finance.js:196
+- `snapshot()` · js/finance.js:209
+- `bankHistory(days = 365)` · js/finance.js:215
+- `reliableHistory(points)` · js/finance.js:226
+- `netSeries(days)` · js/finance.js:237
+- `changeWindow(days)` · js/finance.js:250
+- `invSeries(days)` · js/finance.js:270
+### Flujo mensual, previsiones y alertas · línea 293
+- `monthTotals(m = monthKey(today()` · js/finance.js:294
+- `lastMonths(n)` · js/finance.js:301
+- `recurring()` · js/finance.js:303
+- `liquidity()` · js/finance.js:315
+- `avgMonthlyExpense()` · js/finance.js:316
+- `cushion()` · js/finance.js:321
+- `pace()` · js/finance.js:322
+- `upcoming(days = 31)` · js/finance.js:327
+- `forecast()` · js/finance.js:340
+- `safeToSpend()` · js/finance.js:352
+- `topMerchants(m, n = 5)` · js/finance.js:359
+- `dailySpend(m)` · js/finance.js:360
+- `goalSaved(g)` · js/finance.js:361
+- `alerts()` · js/finance.js:363
+### Fiscalidad España (FIFO, base del ahorro, Modelo 721) · línea 386
+- `cuotaAhorro(base)` · js/finance.js:388
+- `matchTransfers(L)` · js/finance.js:389
+- `taxGroups()` · js/finance.js:398
+- `taxPrefetch(onStep)` · js/finance.js:403
+- `taxCompute()` · js/finance.js:414
+- `costBasis()` · js/finance.js:459
+- `balancesAt(date)` · js/finance.js:460
+- `modelo721(year)` · js/finance.js:461
+- `taxSummary(year, extra = 0)` · js/finance.js:467
+- `byCoin(disp)` · js/finance.js:472
+- `taxCSV(year)` · js/finance.js:473
+- `taxAIText(year)` · js/finance.js:482
 
 ## js/charts.js
 ### Estado de interfaz y gráficos interactivos SVG (propios, sin librerías) · línea 1
@@ -163,15 +163,15 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `rememberWorkerMirrors(info)` · js/connectors.js:13
 - `api(path, opts = {})` · js/connectors.js:24
 - `syncBalances(manual = false)` · js/connectors.js:62
-- `syncExchangeHistory(ex)` · js/connectors.js:86
-- `syncOnChainWallets(manual = false)` · js/connectors.js:107
-### Open Banking PSD2 gratuito (Enable Banking) · línea 130
-- `openBankConnectModal()` · js/connectors.js:131
-- `startBankAuth(aspspName, country)` · js/connectors.js:168
-- `handleBankCallback()` · js/connectors.js:180
-- `syncConnectedBanks(manual = false)` · js/connectors.js:206
-- `saveVaultCredentials(group, opts = {})` · js/connectors.js:292
-- `openConnectHub(initialTab = 'bancos')` · js/connectors.js:355
+- `syncExchangeHistory(ex)` · js/connectors.js:91
+- `syncOnChainWallets(manual = false)` · js/connectors.js:112
+### Open Banking PSD2 gratuito (Enable Banking) · línea 135
+- `openBankConnectModal()` · js/connectors.js:136
+- `startBankAuth(aspspName, country)` · js/connectors.js:173
+- `handleBankCallback()` · js/connectors.js:188
+- `syncConnectedBanks(manual = false, opts = {})` · js/connectors.js:216
+- `saveVaultCredentials(group, opts = {})` · js/connectors.js:355
+- `openConnectHub(initialTab = 'bancos')` · js/connectors.js:418
 
 ## js/ai.js
 ### Copiloto de IA: Chat conversacional (Gemini / Local), análisis, categorización y extracción · línea 1
@@ -221,16 +221,16 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `vMovsDesktop()` · js/views-desktop.js:375
 ### 4. Cuentas y Detalle de Cuenta · línea 421
 - `vAccountDetail(accId)` · js/views-desktop.js:422
-- `vCuentasDesktop()` · js/views-desktop.js:445
-### 5. Plan, Presupuestos y Alertas de precio · línea 460
-- `vGoalsDesktop()` · js/views-desktop.js:461
-### 6. Impuestos España · línea 478
-- `vTax()` · js/views-desktop.js:479
-### 7. Copiloto Studio (Escritorio) · línea 504
-- `vCopilotDesktop()` · js/views-desktop.js:505
-### 8. Ajustes · línea 526
-- `vAjustes()` · js/views-desktop.js:528
-- `vMasDesktop()` · js/views-desktop.js:555
+- `vCuentasDesktop()` · js/views-desktop.js:455
+### 5. Plan, Presupuestos y Alertas de precio · línea 470
+- `vGoalsDesktop()` · js/views-desktop.js:471
+### 6. Impuestos España · línea 488
+- `vTax()` · js/views-desktop.js:489
+### 7. Copiloto Studio (Escritorio) · línea 514
+- `vCopilotDesktop()` · js/views-desktop.js:515
+### 8. Ajustes · línea 536
+- `vAjustes()` · js/views-desktop.js:538
+- `vMasDesktop()` · js/views-desktop.js:565
 
 ## js/views-mobile.js
 ### Vistas Móviles (Editorial Táctil) · línea 1
@@ -279,6 +279,6 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 ### Acciones centralizadas · línea 384
 - `confirmTwice(el)` · js/app.js:385
 - `act(a, el)` · js/app.js:387
-- `afterRender()` · js/app.js:658
-- `refreshAll(force)` · js/app.js:685
-- `init()` · js/app.js:693
+- `afterRender()` · js/app.js:659
+- `refreshAll(force)` · js/app.js:686
+- `init()` · js/app.js:694

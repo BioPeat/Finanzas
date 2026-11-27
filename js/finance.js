@@ -107,6 +107,12 @@ function trackedAssets() {
 
 // ===== Cartera, saldos y derivados en tiempo real =====
 function bankBalance(a) {
+  if (a.ebUid && a.useApi !== false) {
+    const cur = a.currency || 'EUR';
+    const apiVal = state.apiBal?.[a.id]?.assets?.[cur];
+    if (apiVal != null && isFinite(apiVal)) return +apiVal;
+    if (a.ebBal != null && isFinite(a.ebBal)) return +a.ebBal;
+  }
   const txs = state.tx.filter(t => t.acc === a.id).sort((x, y) => x.date.localeCompare(y.date) || ((y.ord ?? 0) - (x.ord ?? 0)));
   if (!txs.length) return +a.manualBal || 0;
   let base = null, idx = -1;
