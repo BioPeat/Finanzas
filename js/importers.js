@@ -217,6 +217,7 @@ function openImport(rows, det, fname, map) {
   modal('Importar ' + esc(fname), '<p>Formato detectado: <b>' + esc(F.name) + '</b> · ' + parsed.length + ' movimientos del ' + fmtDate(dates[0], { day: 'numeric', month: 'short', year: 'numeric' }) + ' al ' + fmtDate(dates.at(-1), { day: 'numeric', month: 'short', year: 'numeric' }) + '.</p>'
     + '<div class="form"><label class="f wide">Cuenta<select id="imp-acc">' + opts + '<option value="__new"' + (guess ? '' : ' selected') + '>+ Nueva cuenta</option></select></label>'
     + '<label class="f wide" id="imp-new-w"' + (guess ? ' hidden' : '') + '>Nombre de la cuenta nueva<input type="text" id="imp-name" value="' + esc(defName) + '"></label></div>'
+    + (guess?.ebUid ? '<div class="callout info" style="margin-top:8px">Esta cuenta está conectada a Enable Banking (PSD2): al sincronizar se priorizarán sus datos en vivo.</div>' : '')
     + '<p class="note">Los movimientos repetidos se ignoran automáticamente, así que puedes reimportar periodos que se solapen sin duplicar nada.</p><div class="row" style="margin-top:12px"><button class="btn primary" type="button" id="imp-ok">Importar</button></div>');
   $('imp-acc').onchange = () => $('imp-new-w').hidden = $('imp-acc').value !== '__new';
   $('imp-ok').onclick = () => {

@@ -424,6 +424,8 @@ async function act(a, el) {
     case 'import': $('file-in').click(); break;
     case 'refresh': await syncBalances(true); break;
     case 'sync-banks': await syncConnectedBanks(true); break;
+    case 'eb-quick-santander': await quickAuthorizeSantander(); break;
+    case 'purge-bank-excel': await purgeBankExcelByAccId(id); break;
     case 'sync-hist': await syncExchangeHistory(id); break;
     case 'prices': await refreshPrices(true); toast('Precios actualizados'); break;
     case 'clear-filt': filt = { q: '', m: filt.m, cat: '', acc: '', type: '', day: '' }; render(); break;
@@ -724,12 +726,22 @@ function init() {
   filt.m = state.tx.map(t => monthKey(t.date)).sort().at(-1) || '';
   ready = true; snapshot(); autoBackup(); render();
   document.body.dataset.ready = 'true';
-  handleBankCallback();
   if (state.accounts.length) refreshPrices();
   startLiveStream();
   if (workerEndpoints().length) {
-    (async () => { if (!paired) { await syncNow(); await syncBalances(); } })();
-    api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { });
+    (async () => {
+      if (!state.workerInfo) {
+        try { state.workerInfo = await api('/ping'); save(false); } catch (e) { }
+      } else {
+        api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { });
+      }
+      if (!paired) await syncNow();
+      const handledBank = await handleBankCallback();
+      reconcileEnableBankingAccounts();
+      if (!handledBank && !paired) await syncBalances();
+    })();
+  } else {
+    handleBankCallback();
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAll(); else stopLiveStream(); });
   addEventListener('online', () => refreshAll());

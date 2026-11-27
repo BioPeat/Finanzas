@@ -1,4 +1,4 @@
-const CACHE = 'finanzas-v12-19';
+const CACHE = 'finanzas-v12-20';
 const CORE = [
   './',
   'index.html',

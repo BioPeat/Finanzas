@@ -482,21 +482,23 @@ function pkcs1ToPkcs8(der) {
 }
 async function enableBankingJWT(env) {
   if (!env.ENABLE_BANKING_APP_ID || !env.ENABLE_BANKING_PRIVATE_KEY) throw new Error('Enable Banking no está configurado en los secretos del Worker.');
-  const rawPem = String(env.ENABLE_BANKING_PRIVATE_KEY).replace(/\\n/g, '\n');
+  const appId = String(env.ENABLE_BANKING_APP_ID).trim().replace(/^["']|["']$/g, '');
+  const rawPem = String(env.ENABLE_BANKING_PRIVATE_KEY).trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
   const isPkcs1 = /-----BEGIN RSA PRIVATE KEY-----/i.test(rawPem);
   const pem = rawPem.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '');
   let der = unb64(pem);
   if (isPkcs1) der = pkcs1ToPkcs8(der);
   const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const iat = Math.floor(Date.now() / 1000);
-  const head = b64u(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: String(env.ENABLE_BANKING_APP_ID).trim() })));
+  const head = b64u(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: appId })));
   const pay = b64u(enc.encode(JSON.stringify({ iss: 'enablebanking.com', aud: 'api.enablebanking.com', iat, exp: iat + 300 })));
   const sig = b64u(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(head + '.' + pay)));
   return head + '.' + pay + '.' + sig;
 }
 async function ebReq(env, path, opts = {}) {
   const jwt = await enableBankingJWT(env);
-  return getJSON('https://api.enablebanking.com' + path, { ...opts, headers: { Authorization: 'Bearer ' + jwt, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  const hdrs = { Authorization: 'Bearer ' + jwt, ...(opts.body ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) };
+  return getJSON('https://api.enablebanking.com' + path, { ...opts, headers: hdrs });
 }
 function ebPsuHeaders(req) {
   const h = {};
@@ -506,15 +508,63 @@ function ebPsuHeaders(req) {
   if (ua) h['Psu-User-Agent'] = ua;
   return h;
 }
+function parseEbBalanceAmount(b) {
+  const raw = b?.balance_amount?.amount;
+  if (raw == null || raw === '') return null;
+  const n = +raw;
+  if (!Number.isFinite(n)) return null;
+  return String(b?.credit_debit_indicator || '').toUpperCase() === 'DBIT' && n > 0 ? -n : n;
+}
 function pickEnableBankingBalance(bals) {
   if (!Array.isArray(bals) || !bals.length) return null;
   const order = ['ITAV', 'XPCD', 'ITBD', 'CLAV', 'CLBD', 'FWAV', 'OPAV', 'OPBD'];
   const stamp = b => String(b?.last_change_date_time || b?.reference_date || '');
   for (const tp of order) {
-    const matches = bals.filter(x => x && x.balance_type === tp && x.balance_amount && Number.isFinite(+x.balance_amount.amount));
+    const matches = bals.filter(x => x && x.balance_type === tp && parseEbBalanceAmount(x) != null);
     if (matches.length) return matches.sort((a, b) => stamp(b).localeCompare(stamp(a)))[0];
   }
-  return bals.find(x => x && x.balance_amount && Number.isFinite(+x.balance_amount.amount)) || bals[0];
+  return bals.find(x => x && parseEbBalanceAmount(x) != null) || bals[0];
+}
+async function fetchEbTransactions(effEnv, uid, dateFrom, strategy, psuHeaders) {
+  const run = async (df, strat) => {
+    const qs = new URLSearchParams();
+    if (df) qs.set('date_from', df);
+    if (strat && strat !== 'default') qs.set('strategy', strat);
+    const qStr = qs.toString();
+    const first = await ebReq(effEnv, '/accounts/' + encodeURIComponent(uid) + '/transactions' + (qStr ? '?' + qStr : ''), { headers: psuHeaders });
+    const raw = [...(first?.transactions || [])];
+    const warnings = [];
+    let cont = first?.continuation_key || '', page = 1;
+    while (cont && page < 8) {
+      try {
+        const pqs = new URLSearchParams();
+        if (df) pqs.set('date_from', df);
+        pqs.set('continuation_key', cont);
+        const nextTx = await ebReq(effEnv, '/accounts/' + encodeURIComponent(uid) + '/transactions?' + pqs.toString(), { headers: psuHeaders });
+        raw.push(...(nextTx?.transactions || []));
+        cont = nextTx?.continuation_key || '';
+        page++;
+      } catch (pageErr) {
+        warnings.push('Movimientos (pág. ' + (page + 1) + '): ' + formatEbError(pageErr));
+        break;
+      }
+    }
+    return { raw, warnings };
+  };
+  try {
+    return await run(dateFrom, strategy);
+  } catch (e) {
+    const isPeriodErr = e?.status === 422 || /WRONG_TRANSACTIONS_PERIOD|out of bound|period/i.test(String(e?.message || ''));
+    if (!isPeriodErr) throw e;
+    const d30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+    try {
+      return await run(d30, 'default');
+    } catch (e2) {
+      const isPeriodErr2 = e2?.status === 422 || /WRONG_TRANSACTIONS_PERIOD|out of bound|period/i.test(String(e2?.message || ''));
+      if (!isPeriodErr2) throw e2;
+      return await run('', 'default');
+    }
+  }
 }
 function formatEbError(err) {
   const msg = String(err?.message || err || 'Error desconocido');
@@ -843,7 +893,9 @@ export default {
       }
       if (url.pathname === '/bank/session' && req.method === 'POST') {
         const b = JSON.parse(await req.text());
-        return respond(await ebReq(await getEffEnv(), '/sessions', { method: 'POST', headers: ebPsuHeaders(req), body: JSON.stringify({ code: b.code }) }));
+        const ses = await ebReq(await getEffEnv(), '/sessions', { method: 'POST', headers: ebPsuHeaders(req), body: JSON.stringify({ code: b.code }) });
+        if (ses && !ses.accounts?.length && Array.isArray(ses.accounts_data)) ses.accounts = ses.accounts_data;
+        return respond(ses);
       }
       if (url.pathname === '/bank/sync' && req.method === 'POST') {
         const effEnv = await getEffEnv();
@@ -851,12 +903,11 @@ export default {
         const b = JSON.parse(await req.text()), accounts = [], errors = [];
         await Promise.all((b.accounts || []).map(async acc => {
           try {
-            const qs1 = new URLSearchParams();
-            if (b.dateFrom) qs1.set('date_from', b.dateFrom);
-            const qStr1 = qs1.toString();
+            const df = acc.dateFrom ?? b.dateFrom ?? '';
+            const strat = acc.strategy || b.strategy || 'default';
             const [balSettled, txSettled] = await Promise.allSettled([
               ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/balances', { headers: psuHeaders }),
-              ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions' + (qStr1 ? '?' + qStr1 : ''), { headers: psuHeaders })
+              fetchEbTransactions(effEnv, acc.uid, df, strat, psuHeaders)
             ]);
             if (balSettled.status === 'rejected' && txSettled.status === 'rejected') {
               errors.push(acc.uid + ': ' + formatEbError(balSettled.reason));
@@ -866,8 +917,7 @@ export default {
             let bal = null, cur = acc.currency || 'EUR', balanceType = '', referenceDate = '';
             if (balSettled.status === 'fulfilled') {
               const firstBal = pickEnableBankingBalance(balSettled.value?.balances || []);
-              const rawAmt = firstBal?.balance_amount?.amount;
-              bal = rawAmt != null && rawAmt !== '' && Number.isFinite(+rawAmt) ? +rawAmt : null;
+              bal = parseEbBalanceAmount(firstBal);
               cur = firstBal?.balance_amount?.currency || cur;
               balanceType = firstBal?.balance_type || '';
               referenceDate = firstBal?.reference_date || '';
@@ -876,23 +926,8 @@ export default {
             }
             const rawTx = [];
             if (txSettled.status === 'fulfilled') {
-              const firstTxRes = txSettled.value || {};
-              rawTx.push(...(firstTxRes.transactions || []));
-              let cont = firstTxRes.continuation_key || '', page = 1;
-              while (cont && page < 5) {
-                try {
-                  const qs = new URLSearchParams();
-                  if (b.dateFrom) qs.set('date_from', b.dateFrom);
-                  qs.set('continuation_key', cont);
-                  const nextTx = await ebReq(effEnv, '/accounts/' + encodeURIComponent(acc.uid) + '/transactions?' + qs.toString(), { headers: psuHeaders });
-                  rawTx.push(...(nextTx.transactions || []));
-                  cont = nextTx.continuation_key || '';
-                  page++;
-                } catch (pageErr) {
-                  warnings.push('Movimientos (pág. ' + (page + 1) + '): ' + formatEbError(pageErr));
-                  break;
-                }
-              }
+              rawTx.push(...(txSettled.value?.raw || []));
+              if (txSettled.value?.warnings?.length) warnings.push(...txSettled.value.warnings);
             } else {
               warnings.push('Movimientos: ' + formatEbError(txSettled.reason));
             }
@@ -901,7 +936,8 @@ export default {
               .map(t => {
                 const amt = +(t.transaction_amount && t.transaction_amount.amount || 0);
                 const signed = t.credit_debit_indicator === 'DBIT' ? -Math.abs(amt) : t.credit_debit_indicator === 'CRDT' ? Math.abs(amt) : amt;
-                const desc = [...(t.remittance_information || []), t.creditor?.name, t.debtor?.name].filter(Boolean).join(' · ') || 'Movimiento bancario';
+                const rem = Array.isArray(t.remittance_information) ? t.remittance_information : (t.remittance_information ? [t.remittance_information] : []);
+                const desc = [...rem, t.creditor?.name, t.debtor?.name, t.additional_information].filter(Boolean).join(' · ') || 'Movimiento bancario';
                 const rawAfter = t.balance_after_transaction?.amount;
                 const balAfter = rawAfter != null && rawAfter !== '' && Number.isFinite(+rawAfter) ? +rawAfter : null;
                 return { id: t.entry_reference || t.transaction_id || '', date: (t.booking_date || t.value_date || t.transaction_date || '').slice(0, 10), desc, amount: signed, bal: balAfter, currency: (t.transaction_amount && t.transaction_amount.currency) || cur };

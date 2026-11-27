@@ -158,14 +158,21 @@ async def browser_checks():
         await ev("document.querySelector('[data-act=\"worker-test\"]').click()"); await pg.wait_for_timeout(800)
         r = await ev("({acc:state.accounts.find(a=>a.api==='kucoin')?.name,btc:priceEUR('BTC'),nw:netWorth().total,der:derivRows().length,version:state.workerInfo?.version==='w6'})")
         ok(f"Worker w6 conectado, patrimonio {round(r['nw'])} €, {r['der']} derivados") if r['version'] and r['acc'] == 'KuCoin' and r['btc'] > 50000 and r['der'] == 2 else fail('Worker w6: ' + str(r))
-        # Open Banking PSD2 Santander: saldo en vivo 930 € sin doble conteo ni duplicado de Excel previo
+        # Open Banking PSD2 Santander: purga Excel previo y cuenta Excel duplicada, usa solo Enable Banking (930 €)
         r_eb = await ev("""(async()=>{
+          const snap = JSON.stringify(state);
           const sAcc = state.accounts[0];
+          const excelIds = state.tx.filter(t => t.acc === sAcc.id && isFileImportSrc(t.src)).map(t => t.id);
+          const dupAcc = { id: 'a_san_dup', name: 'Santander Excel', kind: 'bank', inst: 'Santander', currency: 'EUR', fmt: 'santander', manualBal: 412.94 };
+          state.accounts.push(dupAcc);
+          state.tx.push({ id: 't_dup_excel', acc: dupAcc.id, date: '2026-11-01', desc: 'Compra Excel', amount: -10, bal: 412.94, src: 'movimientos.xlsx', cat: 'otros' });
           sAcc.ebUid = 'eb_santander_1';
-          const beforeN = state.tx.length;
           await syncConnectedBanks(true, { force: true });
           const balMerged = bankBalance(sAcc);
-          const afterN = state.tx.length;
+          const excelLeft = state.tx.filter(t => t.acc === sAcc.id && isFileImportSrc(t.src)).length;
+          const dupLeft = state.accounts.some(a => a.id === 'a_san_dup');
+          const deletedTracked = excelIds.every(id => state.deleted[id] > 0) && state.deleted['t_dup_excel'] > 0 && state.deleted['a_san_dup'] > 0;
+          const ebCount = state.tx.filter(t => t.acc === sAcc.id && t.src === 'enablebanking').length;
           const solo = { id: 'a_eb_solo', name: 'Santander PSD2', kind: 'bank', inst: 'Santander', currency: 'EUR', manualBal: 0, ebUid: 'eb_santander_only' };
           state.accounts.push(solo);
           await syncConnectedBanks(true, { force: true });
@@ -174,15 +181,11 @@ async def browser_checks():
           solo.ebBalTs = Date.now() - 31 * 60e3;
           solo.ebSyncAttemptTs = Date.now() - 31 * 60e3;
           const staleRun = await syncConnectedBanks(false);
-          state.accounts = state.accounts.filter(a => a.id !== 'a_eb_solo');
-          state.tx = state.tx.filter(t => t.acc !== 'a_eb_solo' && t.extId !== 'eb_new_1');
-          delete state.apiBal['a_eb_solo'];
-          delete state.apiBal[sAcc.id];
-          delete sAcc.ebUid; delete sAcc.ebBal; delete sAcc.ebBalTs; delete sAcc.ebLastError;
+          state = migrate(JSON.parse(snap));
           save(false);
-          return { beforeN, afterN, balMerged, balSolo, freshSkip, staleRun };
+          return { balMerged, balSolo, excelLeft, dupLeft, deletedTracked, ebCount, freshSkip, staleRun };
         })()""")
-        ok(f"Open Banking Santander en vivo ({r_eb['balMerged']} € / {r_eb['balSolo']} €)") if abs(r_eb['balMerged'] - 930.0) < 0.01 and abs(r_eb['balSolo'] - 930.0) < 0.01 and r_eb['afterN'] == r_eb['beforeN'] + 1 and r_eb['freshSkip']['updated'] == 0 and r_eb['staleRun']['updated'] == 1 else fail('Open Banking Santander: ' + str(r_eb))
+        ok(f"Open Banking Santander en vivo ({r_eb['balMerged']} € / {r_eb['balSolo']} €) y purga Excel") if abs(r_eb['balMerged'] - 930.0) < 0.01 and abs(r_eb['balSolo'] - 930.0) < 0.01 and r_eb['excelLeft'] == 0 and not r_eb['dupLeft'] and r_eb['deletedTracked'] and r_eb['ebCount'] == 2 and r_eb['freshSkip']['updated'] == 0 and r_eb['staleRun']['updated'] == 1 else fail('Open Banking Santander: ' + str(r_eb))
         check('Worker')
 
         print('6. Historiales e impuestos FIFO')

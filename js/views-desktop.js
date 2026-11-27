@@ -88,10 +88,11 @@ function accCard(a, rows) {
   const ebExp = a.ebUid && a.ebValidUntil && a.ebValidUntil <= addDays(today(), 7);
   const tagHTML = (a.ebUid && a.ebLastError) ? '<span class="tag err">revisar</span>'
     : ebExp ? '<span class="tag warn">renovar</span>'
+    : (a.ebPending && !a.ebUid) ? '<span class="tag warn">conectar PSD2</span>'
     : auto ? '<span class="tag ok">auto</span>'
     : '<span class="tag">' + esc(KIND_NAMES[a.kind] || '') + '</span>';
   const fresh = auto && syncTs ? ' · ' + ago(syncTs) : '';
-  const sub = (iban4 && !hasIbanInName) ? '•••• ' + iban4 + fresh : a.address ? a.address.slice(0, 6) + '…' + a.address.slice(-4) : n ? n + ' ' + (n === 1 ? 'activo' : 'activos') : lastTx ? 'Últ. mov. ' + fmtDate(lastTx, { day: 'numeric', month: 'short' }) : auto ? (syncTs ? 'Sync ' + ago(syncTs) : 'Sincronizado en vivo') : 'Saldo verificado';
+  const sub = (a.ebPending && !a.ebUid) ? 'Autorizar en Enable Banking' : (a.ebUid && a.ebLastError) ? 'Error PSD2 · toca para ver' : (iban4 && !hasIbanInName) ? '•••• ' + iban4 + fresh : a.address ? a.address.slice(0, 6) + '…' + a.address.slice(-4) : n ? n + ' ' + (n === 1 ? 'activo' : 'activos') : lastTx ? 'Últ. mov. ' + fmtDate(lastTx, { day: 'numeric', month: 'short' }) : auto ? (syncTs ? 'Sync ' + ago(syncTs) : 'Sincronizado en vivo') : 'Saldo verificado';
   return '<button type="button" class="acard k-' + a.kind + (ik ? ' inst-' + ik : '') + '" data-acc="' + a.id + '">'
     + '<span class="top"><span class="acc-title"><i class="cat-dot k-' + a.kind + (ik ? ' inst-' + ik : '') + '"></i><span>' + esc(a.name) + '</span></span>' + tagHTML + '</span>'
     + '<span class="acc-bottom"><span class="val">' + money(v, { d: 0 }) + '</span><span class="sub">' + esc(sub) + '</span></span></button>';
@@ -434,22 +435,32 @@ function vAccountDetail(accId) {
   const ders = derivRows().filter(d => d.acc === a.id);
   const isCash = a.kind === 'bank' || a.kind === 'cash';
   const apiSyncTs = a.ebBalTs || state.apiBal[a.id]?.ts;
+  const ebOpen = !!(a.kind === 'bank' && state.workerInfo?.openBanking);
+  const ebRenew = a.ebUid && (a.ebLastError || (a.ebValidUntil && a.ebValidUntil <= addDays(today(), 14)));
+  const isSan = instKey(a) === 'santander';
   const acts = btn('← Todas', 'data-act="acc-back"', 'ghost') + btn('Editar', 'data-act="edit-acc" data-id="' + a.id + '"', 'ghost')
     + (isCash
-      ? (a.ebUid ? btn(ico('sync') + 'Sincronizar', 'data-act="sync-banks"', 'primary') + btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'ghost') : btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'primary'))
+      ? (a.ebUid
+        ? btn(ico('sync') + 'Sincronizar', 'data-act="sync-banks"', 'primary') + (ebRenew ? btn('Renovar PSD2', 'data-act="bank-connect"', 'ghost') : '') + btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'ghost')
+        : (ebOpen ? btn(ico('bank') + 'Conectar Enable Banking', isSan ? 'data-act="eb-quick-santander"' : 'data-act="bank-connect"', 'primary') + btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'ghost') : btn(ico('upload') + 'Importar extracto', 'data-act="import"', 'primary')))
       : (a.api ? btn(ico('sync') + 'Sincronizar', 'data-act="refresh"', 'primary') : btn('+ Operación', 'data-act="add-op"', 'primary')));
 
   const ebWarn = a.ebUid && a.ebValidUntil && a.ebValidUntil <= addDays(today(), 7)
     ? '<div class="callout warn mt-12">Autorización PSD2 próxima a caducar o caducada (' + esc(a.ebValidUntil.slice(0, 10)) + '). ' + btn('Renovar', 'data-act="bank-connect"', 'small') + '</div>'
     : '';
   const ebErr = a.ebUid && a.ebLastError
-    ? '<div class="callout err mt-12">' + esc(a.ebLastError) + '</div>'
+    ? '<div class="callout err mt-12">' + esc(a.ebLastError) + ' ' + btn('Reautorizar', isSan ? 'data-act="eb-quick-santander"' : 'data-act="bank-connect"', 'small') + '</div>'
     : '';
+  const ebExcelCallout = (a.kind === 'bank' && !a.ebUid && typeof hasUploadedBankExcel === 'function' && hasUploadedBankExcel(a.id))
+    ? '<div class="callout warn mt-12">Esta cuenta muestra datos de un Excel subido manualmente. ' + btn('Eliminar Excel y usar solo Enable Banking', 'data-act="purge-bank-excel" data-id="' + a.id + '"', 'small') + '</div>'
+    : (a.kind === 'bank' && !a.ebUid && a.ebPending)
+      ? '<div class="callout info mt-12">Excel eliminado. Autoriza tu cuenta en Enable Banking para sincronizar saldo y movimientos en vivo. ' + btn(isSan ? 'Autorizar Santander ahora' : 'Autorizar banco', isSan ? 'data-act="eb-quick-santander"' : 'data-act="bank-connect"', 'primary small') + '</div>'
+      : '';
 
   return head(esc(a.name), (KIND_NAMES[a.kind] || 'Cuenta') + (a.iban ? ' · ' + esc(a.iban) : '') + (a.address ? ' · ' + esc(a.address.slice(0, 10) + '…' + a.address.slice(-6)) : ''), acts)
     + '<div class="grid">'
     + '<section class="panel span4"><div class="position-eyebrow">Saldo en cuenta</div><div class="position-value">' + moneyBig(valAcc) + '</div><div class="position-status">' + (a.ebUid ? '<span class="tag ok">Open Banking PSD2</span>' : state.apiBal[a.id] ? '<span class="tag ok">Sincronización API</span>' : '<span class="tag">Manual / Importada</span>') + (apiSyncTs ? ' <small class="faint">' + fmtDate(new Date(apiSyncTs).toISOString().slice(0, 10)) + '</small>' : '') + '</div>'
-    + ebErr + ebWarn
+    + ebErr + ebWarn + ebExcelCallout
     + (!isCash ? '<div class="label">Activos en cartera (' + rows.length + ')</div>' + (rows.length ? '<div class="kv">' + rows.map(r => '<dt>' + esc(r.asset) + ' <span class="faint">' + nf(r.qty, r.qty < 1 ? 6 : 2, 0) + '</span></dt><dd>' + money(r.eur, { d: 0 }) + '</dd>').join('') + '</div>' : '<p class="muted">Sin activos registrados.</p>') : '')
     + (ders.length ? '<div class="label">Derivados (' + ders.length + ')</div>' + ders.map(d => '<button type="button" class="upcoming-line rec-line acc-deriv-row" ' + (d.api ? 'data-select-sym="' + esc(d.markSym) + '"' : 'data-deriv="' + esc(d.id) + '"') + '><span class="tag ' + (d.side === 'short' ? 'err' : 'ok') + '">' + (d.side === 'short' ? 'Corto' : 'Largo') + (d.lev ? ' ' + d.lev + '×' : '') + '</span><span><b>' + esc(d.instr) + '</b><small>Margen ' + money(d.marginEUR, { d: 0 }) + '</small></span><strong class="' + cls(d.pnlEUR) + '">' + money(d.pnlEUR, { sign: true }) + '</strong></button>').join('') : '')
     + (!isCash && state.apiBal[a.id] && !ops.length ? '<div class="callout info mt-12">Saldos en vivo por API. Importa tu historial CSV si necesitas coste FIFO.</div>' : '')

@@ -364,16 +364,18 @@ try {
   j = await r.json();
   assert.equal(r.status, 200);
   assert.equal(j.accounts.length, 2);
-  assert.equal(j.accounts[0].bal, 930);
-  assert.equal(j.accounts[0].balanceType, 'ITAV');
-  assert.equal(j.accounts[0].tx.length, 1);
-  assert.equal(j.accounts[0].tx[0].id, 'eb_book_1');
-  assert.equal(j.accounts[0].tx[0].bal, 930);
-  assert.equal(j.accounts[1].bal, 930);
-  assert.equal(j.accounts[1].balanceType, 'XPCD');
-  assert.equal(j.accounts[1].tx.length, 0);
-  assert.equal(j.accounts[1].warnings.length, 1);
-  assert.match(j.accounts[1].warnings[0], /429|límite temporal/i);
+  const accOk = j.accounts.find(a => a.uid === 'acc_ok');
+  const accErr = j.accounts.find(a => a.uid === 'acc_err_tx');
+  assert.equal(accOk.bal, 930);
+  assert.equal(accOk.balanceType, 'ITAV');
+  assert.equal(accOk.tx.length, 1);
+  assert.equal(accOk.tx[0].id, 'eb_book_1');
+  assert.equal(accOk.tx[0].bal, 930);
+  assert.equal(accErr.bal, 930);
+  assert.equal(accErr.balanceType, 'XPCD');
+  assert.equal(accErr.tx.length, 0);
+  assert.equal(accErr.warnings.length, 1);
+  assert.match(accErr.warnings[0], /429|límite temporal/i);
   assert.deepEqual(ebHeadersSeen[0], { ip: '203.0.113.42', ua: 'FinanzasTest/1.0' });
 
   // Enable Banking /bank/auth: consent up to 180 days (maxValidSec or /aspsps lookup)
@@ -402,6 +404,54 @@ try {
     body: JSON.stringify({ aspspName: 'Santander', country: 'ES', redirectUrl: 'https://usuario.github.io/Finanzas/' })
   }), envEbSync);
   assert.equal(r.status, 200);
+  // Enable Banking /bank/sync: DBIT negative balance, 422 WRONG_TRANSACTIONS_PERIOD fallback, and /bank/session accounts_data fallback
+  const ebTxUrls = [];
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.endsWith('/sessions')) {
+      return new Response(JSON.stringify({ session_id: 'ses_1', accounts_data: [{ uid: 'acc_data_1', account_id: { iban: 'ES1200490001500000000001' }, currency: 'EUR' }] }), { status: 200 });
+    }
+    if (u.includes('/balances')) {
+      return new Response(JSON.stringify({
+        balances: [{ balance_type: 'ITAV', credit_debit_indicator: 'DBIT', balance_amount: { amount: '45.50', currency: 'EUR' } }]
+      }), { status: 200 });
+    }
+    if (u.includes('/transactions')) {
+      ebTxUrls.push(u);
+      if (u.includes('strategy=longest')) {
+        return new Response(JSON.stringify({ message: 'WRONG_TRANSACTIONS_PERIOD' }), { status: 422 });
+      }
+      return new Response(JSON.stringify({
+        transactions: [
+          { entry_reference: 'eb_fb_1', status: 'BOOK', booking_date: '2026-11-27', credit_debit_indicator: 'DBIT', transaction_amount: { amount: '15.00', currency: 'EUR' }, additional_information: 'COMISION' }
+        ]
+      }), { status: 200 });
+    }
+    throw new Error('Unexpected fetch URL in EB fallback test: ' + u);
+  };
+  r = await worker.fetch(new Request('https://worker.test/bank/session', {
+    method: 'POST',
+    headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: 'auth_code_1' })
+  }), envEbSync);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.accounts.length, 1);
+  assert.equal(j.accounts[0].uid, 'acc_data_1');
+
+  r = await worker.fetch(new Request('https://worker.test/bank/sync', {
+    method: 'POST',
+    headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accounts: [{ uid: 'acc_dbit', currency: 'EUR', dateFrom: '2026-08-01', strategy: 'longest' }] })
+  }), envEbSync);
+  j = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(j.accounts[0].bal, -45.5);
+  assert.equal(j.accounts[0].tx.length, 1);
+  assert.equal(j.accounts[0].tx[0].desc, 'COMISION');
+  assert.equal(ebTxUrls.length, 2);
+  assert.equal(ebTxUrls[0].includes('strategy=longest'), true);
+  assert.equal(ebTxUrls[1].includes('strategy=longest'), false);
 } finally {
   globalThis.fetch = origFetch;
 }

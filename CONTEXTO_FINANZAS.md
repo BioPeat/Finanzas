@@ -1,6 +1,6 @@
 # CONTEXTO · Finanzas
 
-**Versión actual: v12** · revisión 19 · Worker **w6**
+**Versión actual: v12** · revisión 20 · Worker **w6**
 
 ## Qué es
 PWA privada y local-first para unificar bancos, exchanges (KuCoin, Kraken, Binance, OKX, Bybit), brókeres, wallets on-chain, derivados en vivo, flujo mensual, fiscalidad española y Copiloto IA (Gemini). Se publica en GitHub Pages con un Cloudflare Worker gratuito (`w6`).

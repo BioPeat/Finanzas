@@ -362,6 +362,10 @@ function goalSaved(g) { if (g.acc) { const a = accById(g.acc); if (a) return sum
 
 function alerts() {
   const out = [], m = monthKey(today()), mt = monthTotals(m), add = (id, lvl, txt) => { if (!state.dismissed[id]) out.push({ id, lvl, txt }); };
+  for (const a of state.accounts) {
+    if (a.ebUid && a.ebLastError) add('eb|err|' + a.id + '|' + today(), 'err', 'Banco ' + a.name + ': ' + a.ebLastError);
+    else if (a.ebPending && !a.ebUid) add('eb|pend|' + a.id, 'warn', a.name + ': Excel eliminado · autoriza Enable Banking en Cuentas.');
+  }
   for (const a of state.accounts.filter(a => a.kind === 'bank')) { const b = bankBalance(a); if (b < (+state.settings.lowBal || 0)) add('low|' + a.id + '|' + today(), 'err', a.name + ': saldo bajo (' + nf(b) + ' €).'); }
   for (const [c, lim] of Object.entries(state.budgets)) { const g = mt.byCat[c] || 0; if (lim > 0 && g >= lim * 0.9) add('bud|' + c + '|' + m, g > lim ? 'err' : 'warn', 'Presupuesto de ' + catById(c).name + ': ' + nf(g, 0) + ' de ' + nf(lim, 0) + ' €.'); }
   for (const d of derivRows()) {
