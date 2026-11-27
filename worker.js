@@ -522,6 +522,19 @@ function formatEbError(err) {
   if (/\b429\b|RATE_LIMIT|ACCESS_EXCEEDED/i.test(msg)) return msg + ' (límite temporal del banco PSD2; reintenta más tarde)';
   return msg;
 }
+async function resolveEbValidUntil(env, aspspName, country, maxValidSec, psuHeaders) {
+  let maxSec = +maxValidSec || 0;
+  if (!maxSec && aspspName) {
+    try {
+      const list = await ebReq(env, '/aspsps?country=' + encodeURIComponent(country), { headers: psuHeaders });
+      const target = String(aspspName).trim().toLowerCase();
+      const found = (list?.aspsps || []).find(x => String(x?.name || '').trim().toLowerCase() === target);
+      if (found && +found.maximum_consent_validity > 0) maxSec = +found.maximum_consent_validity;
+    } catch (e) { }
+  }
+  const safeSec = maxSec > 0 ? Math.max(86400, Math.min(maxSec - 3600, 180 * 86400 - 3600)) : 89 * 86400;
+  return new Date(Date.now() + safeSec * 1000).toISOString();
+}
 
 // ---------- Copiloto multi-proveedor: chat, análisis, categorización e importación IA ----------
 function aiProviders(env) { return { gemini: !!env.GEMINI_API_KEY, openai: !!env.OPENAI_API_KEY, anthropic: !!env.ANTHROPIC_API_KEY, custom: !!(env.AI_BASE_URL && env.AI_API_KEY) }; }
@@ -820,9 +833,12 @@ export default {
         return respond(await ebReq(await getEffEnv(), '/aspsps?country=' + encodeURIComponent(c)));
       }
       if (url.pathname === '/bank/auth' && req.method === 'POST') {
+        const effEnv = await getEffEnv();
+        const psuHeaders = ebPsuHeaders(req);
         const b = JSON.parse(await req.text());
-        const valid = new Date(Date.now() + 89 * 864e5).toISOString();
-        const r = await ebReq(await getEffEnv(), '/auth', { method: 'POST', headers: ebPsuHeaders(req), body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country: (b.country || 'ES').toUpperCase() }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
+        const country = (b.country || 'ES').toUpperCase();
+        const valid = await resolveEbValidUntil(effEnv, b.aspspName, country, +b.maxValidSec || 0, psuHeaders);
+        const r = await ebReq(effEnv, '/auth', { method: 'POST', headers: psuHeaders, body: JSON.stringify({ access: { balances: true, transactions: true, valid_until: valid }, aspsp: { name: b.aspspName, country }, psu_type: 'personal', redirect_url: b.redirectUrl, state: b.state || String(Date.now()) }) });
         return respond(r);
       }
       if (url.pathname === '/bank/session' && req.method === 'POST') {
@@ -833,7 +849,7 @@ export default {
         const effEnv = await getEffEnv();
         const psuHeaders = ebPsuHeaders(req);
         const b = JSON.parse(await req.text()), accounts = [], errors = [];
-        for (const acc of b.accounts || []) {
+        await Promise.all((b.accounts || []).map(async acc => {
           try {
             const qs1 = new URLSearchParams();
             if (b.dateFrom) qs1.set('date_from', b.dateFrom);
@@ -844,7 +860,7 @@ export default {
             ]);
             if (balSettled.status === 'rejected' && txSettled.status === 'rejected') {
               errors.push(acc.uid + ': ' + formatEbError(balSettled.reason));
-              continue;
+              return;
             }
             const warnings = [];
             let bal = null, cur = acc.currency || 'EUR', balanceType = '', referenceDate = '';
@@ -892,7 +908,7 @@ export default {
               }).filter(x => x.date && Number.isFinite(x.amount));
             accounts.push({ uid: acc.uid, bal, currency: cur, balanceType, referenceDate, tx, warnings });
           } catch (e) { errors.push(acc.uid + ': ' + formatEbError(e)); }
-        }
+        }));
         return respond({ accounts, errors, ts: Date.now() });
       }
       if (url.pathname === '/ai' && req.method === 'POST') {

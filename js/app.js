@@ -85,8 +85,21 @@ function renderNav() {
   if ($('nav-drawer')) $('nav-drawer').innerHTML = drawerNav();
   $('nav-tabs').innerHTML = TABS.map(([id, n, i]) => '<button type="button" data-go="' + id + '"' + (view === id ? ' aria-current="page"' : '') + '>' + ico(i) + '<span>' + n + '</span></button>').join('');
   const dark = document.documentElement.dataset.theme !== 'light', hid = !!state.settings.hide;
-  for (const id of ['theme-side', 'theme-top', 'theme-top-desktop']) if ($(id)) $(id).innerHTML = ico(dark ? 'sun' : 'moon');
-  for (const id of ['hide-side', 'hide-top', 'hide-top-desktop']) if ($(id)) $(id).innerHTML = ico(hid ? 'eyeoff' : 'eye');
+  const themeLbl = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+  const hideLbl = hid ? 'Mostrar importes' : 'Ocultar importes';
+  for (const id of ['theme-side', 'theme-top', 'theme-top-desktop']) {
+    const el = $(id); if (!el) continue;
+    el.innerHTML = ico(dark ? 'sun' : 'moon');
+    el.title = themeLbl;
+    el.setAttribute('aria-label', themeLbl);
+  }
+  for (const id of ['hide-side', 'hide-top', 'hide-top-desktop']) {
+    const el = $(id); if (!el) continue;
+    el.innerHTML = ico(hid ? 'eyeoff' : 'eye');
+    el.title = hideLbl;
+    el.setAttribute('aria-label', hideLbl);
+    el.setAttribute('aria-pressed', String(hid));
+  }
   if ($('ver-side')) $('ver-side').textContent = APP_VERSION;
   if ($('ver-badge')) $('ver-badge').textContent = APP_VERSION;
   if ($('ver-drawer')) $('ver-drawer').textContent = APP_VERSION;
@@ -686,7 +699,10 @@ addEventListener('resize', () => { const n = narrow(); if (ready && n !== lastNa
 function refreshAll(force) {
   snapshot();
   if (syncOn()) syncNow();
-  if (workerEndpoints().length) { if (force || Date.now() - (state.apiTs || 0) > 5 * 60e3) syncBalances(); }
+  if (workerEndpoints().length) {
+    if (force || Date.now() - (state.apiTs || 0) > 5 * 60e3) syncBalances();
+    else if (state.accounts.some(a => a.ebUid && (!a.ebBalTs || Date.now() - Math.max(a.ebBalTs || 0, a.ebSyncAttemptTs || 0) >= 30 * 60e3))) syncConnectedBanks(false);
+  }
   else if (state.accounts.length) refreshPrices();
   startLiveStream();
 }
@@ -711,7 +727,10 @@ function init() {
   handleBankCallback();
   if (state.accounts.length) refreshPrices();
   startLiveStream();
-  if (workerEndpoints().length) { if (!paired) { syncNow(); syncBalances(); } api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { }); }
+  if (workerEndpoints().length) {
+    (async () => { if (!paired) { await syncNow(); await syncBalances(); } })();
+    api('/ping').then(x => { state.workerInfo = x; save(false); if (view === 'ajustes') render(); }).catch(() => { });
+  }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAll(); else stopLiveStream(); });
   addEventListener('online', () => refreshAll());
   addEventListener('focus', () => { if (syncOn()) syncNow(); });

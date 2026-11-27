@@ -163,15 +163,15 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `rememberWorkerMirrors(info)` · js/connectors.js:13
 - `api(path, opts = {})` · js/connectors.js:24
 - `syncBalances(manual = false)` · js/connectors.js:62
-- `syncExchangeHistory(ex)` · js/connectors.js:91
-- `syncOnChainWallets(manual = false)` · js/connectors.js:112
-### Open Banking PSD2 gratuito (Enable Banking) · línea 135
-- `openBankConnectModal()` · js/connectors.js:136
-- `startBankAuth(aspspName, country)` · js/connectors.js:173
-- `handleBankCallback()` · js/connectors.js:188
-- `syncConnectedBanks(manual = false, opts = {})` · js/connectors.js:216
-- `saveVaultCredentials(group, opts = {})` · js/connectors.js:355
-- `openConnectHub(initialTab = 'bancos')` · js/connectors.js:418
+- `syncExchangeHistory(ex)` · js/connectors.js:95
+- `syncOnChainWallets(manual = false)` · js/connectors.js:116
+### Open Banking PSD2 gratuito (Enable Banking) · línea 139
+- `openBankConnectModal()` · js/connectors.js:140
+- `startBankAuth(aspspName, country, maxValidSec = 0)` · js/connectors.js:180
+- `handleBankCallback()` · js/connectors.js:194
+- `syncConnectedBanks(manual = false, opts = {})` · js/connectors.js:222
+- `saveVaultCredentials(group, opts = {})` · js/connectors.js:371
+- `openConnectHub(initialTab = 'bancos')` · js/connectors.js:434
 
 ## js/ai.js
 ### Copiloto de IA: Chat conversacional (Gemini / Local), análisis, categorización y extracción · línea 1
@@ -201,36 +201,36 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `goalRow(g)` · js/views-desktop.js:70
 - `holdingRow(x)` · js/views-desktop.js:75
 - `accCard(a, rows)` · js/views-desktop.js:82
-- `derivCardHTML(d)` · js/views-desktop.js:92
-- `opsTable(ops, hideAcc = false)` · js/views-desktop.js:111
-- `invDonut(list)` · js/views-desktop.js:116
-- `workerInfoHTML(i)` · js/views-desktop.js:121
-- `onboarding()` · js/views-desktop.js:129
-- `renderDesktopTopbar()` · js/views-desktop.js:138
-- `renderAIDrawer()` · js/views-desktop.js:140
-### 1. Inicio Escritorio (Editorial Ledger) · línea 150
-- `vResumenDesktop()` · js/views-desktop.js:151
-### 2. Terminal de Mercados, Velas en directo y Derivados (Escritorio) · línea 254
-- `buildPortfolioContext()` · js/views-desktop.js:255
-- `portfolioMetrics(list, total)` · js/views-desktop.js:266
-- `watchlistSymbols(list)` · js/views-desktop.js:272
-- `marketChartDeck(sym)` · js/views-desktop.js:276
-- `vInvDesktop()` · js/views-desktop.js:297
-### 3. Movimientos (Escritorio) · línea 369
-- `filtered()` · js/views-desktop.js:370
-- `vMovsDesktop()` · js/views-desktop.js:375
-### 4. Cuentas y Detalle de Cuenta · línea 421
-- `vAccountDetail(accId)` · js/views-desktop.js:422
-- `vCuentasDesktop()` · js/views-desktop.js:455
-### 5. Plan, Presupuestos y Alertas de precio · línea 470
-- `vGoalsDesktop()` · js/views-desktop.js:471
-### 6. Impuestos España · línea 488
-- `vTax()` · js/views-desktop.js:489
-### 7. Copiloto Studio (Escritorio) · línea 514
-- `vCopilotDesktop()` · js/views-desktop.js:515
-### 8. Ajustes · línea 536
-- `vAjustes()` · js/views-desktop.js:538
-- `vMasDesktop()` · js/views-desktop.js:565
+- `derivCardHTML(d)` · js/views-desktop.js:99
+- `opsTable(ops, hideAcc = false)` · js/views-desktop.js:118
+- `invDonut(list)` · js/views-desktop.js:123
+- `workerInfoHTML(i)` · js/views-desktop.js:128
+- `onboarding()` · js/views-desktop.js:136
+- `renderDesktopTopbar()` · js/views-desktop.js:145
+- `renderAIDrawer()` · js/views-desktop.js:147
+### 1. Inicio Escritorio (Editorial Ledger) · línea 157
+- `vResumenDesktop()` · js/views-desktop.js:158
+### 2. Terminal de Mercados, Velas en directo y Derivados (Escritorio) · línea 261
+- `buildPortfolioContext()` · js/views-desktop.js:262
+- `portfolioMetrics(list, total)` · js/views-desktop.js:273
+- `watchlistSymbols(list)` · js/views-desktop.js:279
+- `marketChartDeck(sym)` · js/views-desktop.js:283
+- `vInvDesktop()` · js/views-desktop.js:304
+### 3. Movimientos (Escritorio) · línea 376
+- `filtered()` · js/views-desktop.js:377
+- `vMovsDesktop()` · js/views-desktop.js:382
+### 4. Cuentas y Detalle de Cuenta · línea 428
+- `vAccountDetail(accId)` · js/views-desktop.js:429
+- `vCuentasDesktop()` · js/views-desktop.js:462
+### 5. Plan, Presupuestos y Alertas de precio · línea 479
+- `vGoalsDesktop()` · js/views-desktop.js:480
+### 6. Impuestos España · línea 497
+- `vTax()` · js/views-desktop.js:498
+### 7. Copiloto Studio (Escritorio) · línea 523
+- `vCopilotDesktop()` · js/views-desktop.js:524
+### 8. Ajustes · línea 545
+- `vAjustes()` · js/views-desktop.js:547
+- `vMasDesktop()` · js/views-desktop.js:574
 
 ## js/views-mobile.js
 ### Vistas Móviles (Editorial Táctil) · línea 1
@@ -238,7 +238,7 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `vInvMobile()` · js/views-mobile.js:73
 - `vMovsMobile()` · js/views-mobile.js:121
 - `vCuentasMobile()` · js/views-mobile.js:160
-- `vCopilotMobile()` · js/views-mobile.js:171
+- `vCopilotMobile()` · js/views-mobile.js:172
 
 ## js/app.js
 ### Navegación, ventanas modales, acciones, gestos y arranque · línea 1
@@ -248,37 +248,37 @@ Generado automáticamente a partir de los módulos `js/*.js`.
 - `sideAccountsHTML()` · js/app.js:66
 - `drawerNav()` · js/app.js:81
 - `renderNav()` · js/app.js:83
-- `render()` · js/app.js:97
-### PWA · línea 111
-- `installState()` · js/app.js:116
-- `installApp()` · js/app.js:117
-- `repairPWA()` · js/app.js:122
-### Modales de edición, derivados, wallets, watchlist, detalle y búsqueda · línea 128
-- `modal(title, html)` · js/app.js:129
-- `editTx(id)` · js/app.js:137
-- `quickAdd()` · js/app.js:149
-- `editOp(id)` · js/app.js:171
-- `editDeriv(id)` · js/app.js:184
-- `closeDerivModal(id)` · js/app.js:196
-- `editAcc(id)` · js/app.js:202
-- `editWalletModal()` · js/app.js:213
-- `editGoal(id)` · js/app.js:221
-- `editPriceAlertModal(defaultSym = selectedSymbol || 'BTC')` · js/app.js:231
-- `openAddWatchModal()` · js/app.js:240
-- `assetIntelHTML(sym)` · js/app.js:262
-- `assetDetail(sym)` · js/app.js:271
-- `openCommandPalette()` · js/app.js:284
-### Drawer móvil, Drawer IA y Gestos · línea 325
-- `toggleAIDrawer(force)` · js/app.js:326
-- `resetDrawerGesture()` · js/app.js:333
-- `openDrawer()` · js/app.js:334
-- `closeDrawer()` · js/app.js:335
-- `gestureStart(e)` · js/app.js:338
-- `gestureMove(e)` · js/app.js:350
-- `gestureEnd(e)` · js/app.js:371
-### Acciones centralizadas · línea 384
-- `confirmTwice(el)` · js/app.js:385
-- `act(a, el)` · js/app.js:387
-- `afterRender()` · js/app.js:659
-- `refreshAll(force)` · js/app.js:686
-- `init()` · js/app.js:694
+- `render()` · js/app.js:110
+### PWA · línea 124
+- `installState()` · js/app.js:129
+- `installApp()` · js/app.js:130
+- `repairPWA()` · js/app.js:135
+### Modales de edición, derivados, wallets, watchlist, detalle y búsqueda · línea 141
+- `modal(title, html)` · js/app.js:142
+- `editTx(id)` · js/app.js:150
+- `quickAdd()` · js/app.js:162
+- `editOp(id)` · js/app.js:184
+- `editDeriv(id)` · js/app.js:197
+- `closeDerivModal(id)` · js/app.js:209
+- `editAcc(id)` · js/app.js:215
+- `editWalletModal()` · js/app.js:226
+- `editGoal(id)` · js/app.js:234
+- `editPriceAlertModal(defaultSym = selectedSymbol || 'BTC')` · js/app.js:244
+- `openAddWatchModal()` · js/app.js:253
+- `assetIntelHTML(sym)` · js/app.js:275
+- `assetDetail(sym)` · js/app.js:284
+- `openCommandPalette()` · js/app.js:297
+### Drawer móvil, Drawer IA y Gestos · línea 338
+- `toggleAIDrawer(force)` · js/app.js:339
+- `resetDrawerGesture()` · js/app.js:346
+- `openDrawer()` · js/app.js:347
+- `closeDrawer()` · js/app.js:348
+- `gestureStart(e)` · js/app.js:351
+- `gestureMove(e)` · js/app.js:363
+- `gestureEnd(e)` · js/app.js:384
+### Acciones centralizadas · línea 397
+- `confirmTwice(el)` · js/app.js:398
+- `act(a, el)` · js/app.js:400
+- `afterRender()` · js/app.js:672
+- `refreshAll(force)` · js/app.js:699
+- `init()` · js/app.js:710

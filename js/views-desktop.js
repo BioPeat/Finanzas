@@ -84,9 +84,16 @@ function accCard(a, rows) {
   const iban4 = a.iban ? a.iban.slice(-4) : '', hasIbanInName = iban4 && String(a.name || '').includes(iban4);
   const lastTx = (a.kind === 'bank' || a.kind === 'cash') ? state.tx.filter(t => t.acc === a.id).map(t => t.date).sort().at(-1) : '';
   const ik = instKey(a), auto = !!(state.apiBal[a.id] || a.ebUid);
-  const sub = (iban4 && !hasIbanInName) ? '•••• ' + iban4 : a.address ? a.address.slice(0, 6) + '…' + a.address.slice(-4) : n ? n + ' ' + (n === 1 ? 'activo' : 'activos') : lastTx ? 'Últ. mov. ' + fmtDate(lastTx, { day: 'numeric', month: 'short' }) : auto ? 'Sincronizado en vivo' : 'Saldo verificado';
+  const syncTs = a.ebBalTs || state.apiBal[a.id]?.ts || 0;
+  const ebExp = a.ebUid && a.ebValidUntil && a.ebValidUntil <= addDays(today(), 7);
+  const tagHTML = (a.ebUid && a.ebLastError) ? '<span class="tag err">revisar</span>'
+    : ebExp ? '<span class="tag warn">renovar</span>'
+    : auto ? '<span class="tag ok">auto</span>'
+    : '<span class="tag">' + esc(KIND_NAMES[a.kind] || '') + '</span>';
+  const fresh = auto && syncTs ? ' · ' + ago(syncTs) : '';
+  const sub = (iban4 && !hasIbanInName) ? '•••• ' + iban4 + fresh : a.address ? a.address.slice(0, 6) + '…' + a.address.slice(-4) : n ? n + ' ' + (n === 1 ? 'activo' : 'activos') : lastTx ? 'Últ. mov. ' + fmtDate(lastTx, { day: 'numeric', month: 'short' }) : auto ? (syncTs ? 'Sync ' + ago(syncTs) : 'Sincronizado en vivo') : 'Saldo verificado';
   return '<button type="button" class="acard k-' + a.kind + (ik ? ' inst-' + ik : '') + '" data-acc="' + a.id + '">'
-    + '<span class="top"><span class="acc-title"><i class="cat-dot k-' + a.kind + (ik ? ' inst-' + ik : '') + '"></i><span>' + esc(a.name) + '</span></span>' + (auto ? '<span class="tag ok">auto</span>' : '<span class="tag">' + esc(KIND_NAMES[a.kind] || '') + '</span>') + '</span>'
+    + '<span class="top"><span class="acc-title"><i class="cat-dot k-' + a.kind + (ik ? ' inst-' + ik : '') + '"></i><span>' + esc(a.name) + '</span></span>' + tagHTML + '</span>'
     + '<span class="acc-bottom"><span class="val">' + money(v, { d: 0 }) + '</span><span class="sub">' + esc(sub) + '</span></span></button>';
 }
 function derivCardHTML(d) {
@@ -459,8 +466,10 @@ function vCuentasDesktop() {
     return head('Cuentas', 'Conecta tus bancos, exchanges, brókeres y wallets.', btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'primary'))
       + '<div class="panel"><div class="empty"><b>Sin cuentas todavía</b>Pulsa «Conectar» para añadir Santander, KuCoin, Kraken, Revolut o cualquier wallet/bróker.</div></div>';
   }
+  const hasAuto = workerEndpoints().length && state.accounts.some(a => a.api || a.ebUid || a.address);
   return head('Cuentas', state.accounts.length + ' cuentas · ' + money(nw.total, { d: 0 }),
-    btn(ico('plus') + 'Manual', 'data-act="add-acc"', 'ghost') + btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'primary'))
+    (hasAuto ? btn(ico('sync'), 'data-act="refresh" aria-label="Sincronizar cuentas" title="Sincronizar cuentas"', 'ghost iconbtn') : '')
+    + btn(ico('plus') + 'Manual', 'data-act="add-acc"', 'ghost') + btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'primary'))
     + groups.filter(([k]) => state.accounts.some(a => a.kind === k)).map(([k, t]) => {
       const accs = state.accounts.filter(a => a.kind === k).sort((a, b) => accValue(b, nw.rows) - accValue(a, nw.rows)), tot = sum(accs.map(a => accValue(a, nw.rows)));
       return '<div class="acc-group-head"><h2>' + t + '</h2><b class="num">' + money(tot, { d: 0 }) + '</b></div><div class="cards-grid">' + accs.map(a => accCard(a, nw.rows)).join('') + '</div>';

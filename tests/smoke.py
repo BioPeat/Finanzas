@@ -170,15 +170,19 @@ async def browser_checks():
           state.accounts.push(solo);
           await syncConnectedBanks(true, { force: true });
           const balSolo = bankBalance(solo);
+          const freshSkip = await syncConnectedBanks(false);
+          solo.ebBalTs = Date.now() - 31 * 60e3;
+          solo.ebSyncAttemptTs = Date.now() - 31 * 60e3;
+          const staleRun = await syncConnectedBanks(false);
           state.accounts = state.accounts.filter(a => a.id !== 'a_eb_solo');
           state.tx = state.tx.filter(t => t.acc !== 'a_eb_solo' && t.extId !== 'eb_new_1');
           delete state.apiBal['a_eb_solo'];
           delete state.apiBal[sAcc.id];
           delete sAcc.ebUid; delete sAcc.ebBal; delete sAcc.ebBalTs; delete sAcc.ebLastError;
           save(false);
-          return { beforeN, afterN, balMerged, balSolo };
+          return { beforeN, afterN, balMerged, balSolo, freshSkip, staleRun };
         })()""")
-        ok(f"Open Banking Santander en vivo ({r_eb['balMerged']} € / {r_eb['balSolo']} €)") if abs(r_eb['balMerged'] - 930.0) < 0.01 and abs(r_eb['balSolo'] - 930.0) < 0.01 and r_eb['afterN'] == r_eb['beforeN'] + 1 else fail('Open Banking Santander: ' + str(r_eb))
+        ok(f"Open Banking Santander en vivo ({r_eb['balMerged']} € / {r_eb['balSolo']} €)") if abs(r_eb['balMerged'] - 930.0) < 0.01 and abs(r_eb['balSolo'] - 930.0) < 0.01 and r_eb['afterN'] == r_eb['beforeN'] + 1 and r_eb['freshSkip']['updated'] == 0 and r_eb['staleRun']['updated'] == 1 else fail('Open Banking Santander: ' + str(r_eb))
         check('Worker')
 
         print('6. Historiales e impuestos FIFO')
@@ -202,6 +206,16 @@ async def browser_checks():
         r = await pg2.evaluate("({home:!!document.querySelector('.mobile-home'),tabs:document.querySelectorAll('#nav-tabs button').length,fb:state.settings.workerFallback,tx:state.tx.length,ss:syncState,minTap:Math.min(...[...document.querySelectorAll('#nav-tabs button,.mobile-fab,.topbar .iconbtn')].filter(x=>x.offsetParent!==null).map(x=>Math.min(x.getBoundingClientRect().width,x.getBoundingClientRect().height)))})")
         ok('Móvil propio, 5 pestañas y controles >= 44 px') if r['home'] and r['tabs'] == 5 and r['minTap'] >= 44 else fail('Diseño móvil: ' + str(r))
         ok('Vinculación conserva respaldo y móvil vacío no fuerza PUT') if r['fb'] == 'https://worker-backup.test' and r['tx'] == 40 and r['ss'] == 'ok' and sync_opts['put_count'] == 0 else fail('Vinculación móvil: ' + str(r) + ' puts=' + str(sync_opts['put_count']))
+        t_mob = await pg2.evaluate("""(()=>{
+          const b=document.querySelector('#theme-top'), h=document.querySelector('#hide-top');
+          const br=b?.getBoundingClientRect(), hr=h?.getBoundingClientRect();
+          const before=document.documentElement.dataset.theme;
+          b?.click();
+          const after=document.documentElement.dataset.theme;
+          b?.click();
+          return {vis:!!(br&&br.width>=44&&br.height>=44&&hr),adj:!!(br&&hr&&br.left>=hr.right-2),before,after,restored:document.documentElement.dataset.theme};
+        })()""")
+        ok('Botón rápido claro/oscuro en móvil junto a privacidad') if t_mob['vis'] and t_mob['adj'] and t_mob['before'] != t_mob['after'] and t_mob['before'] == t_mob['restored'] else fail('Botón tema móvil: ' + str(t_mob))
         await pg2.evaluate("""(()=>{const fire=(t,x,y)=>document.dispatchEvent(new PointerEvent(t,{bubbles:true,pointerId:7,pointerType:'touch',isPrimary:true,clientX:x,clientY:y}));fire('pointerdown',4,360);fire('pointermove',125,362);fire('pointerup',125,362)})()""")
         ok('Gesto borde izquierdo abre menú') if await pg2.evaluate("document.querySelector('#mobile-drawer').classList.contains('open')") else fail('Gesto borde falló')
         await ctx2.close()
@@ -235,6 +249,15 @@ async def browser_checks():
             r = await ev("({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,hero:parseFloat(getComputedStyle(document.querySelector('.position-value')).fontSize),body:parseFloat(getComputedStyle(document.body).fontSize)})")
             if r['overflow'] > 1: fail(f'Desbordamiento a {width}px: {r}')
             if width < 1024 and r['hero'] < r['body'] * 2.5: fail(f'Jerarquía móvil débil a {width}px: {r}')
+        t_pc = await ev("""(()=>{
+          const b=document.querySelector('#theme-side');
+          const before=document.documentElement.dataset.theme;
+          b?.click();
+          const after=document.documentElement.dataset.theme;
+          b?.click();
+          return {before,after,restored:document.documentElement.dataset.theme};
+        })()""")
+        ok('Botón rápido claro/oscuro en escritorio') if t_pc['before'] != t_pc['after'] and t_pc['before'] == t_pc['restored'] else fail('Botón tema PC: ' + str(t_pc))
         ok('Responsive 360–1920 px sin desbordamiento')
         await b.close()
 

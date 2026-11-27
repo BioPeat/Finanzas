@@ -62,25 +62,29 @@ let balBusy = false;
 async function syncBalances(manual = false) {
   if (!workerEndpoints().length || balBusy) return; balBusy = true;
   try {
-    const before = clone(state), r = await api('/balances', { timeout: 30000 }), errs = []; let structural = false;
-    const derivs = [];
-    for (const [ex, data] of Object.entries(r.exchanges || {})) {
-      let a = state.accounts.find(x => x.api === ex);
-      if (!a) { a = { id: 'a_api_' + ex, name: EXCH[ex] || ex, kind: 'exchange', inst: EXCH[ex] || ex, currency: 'EUR', api: ex, reportsSpain: ex === 'binance' }; state.accounts.push(a); structural = true; }
-      const assets = {}; for (const [k, v] of Object.entries(data.assets || {})) { const s = normAsset(k); assets[s] = (assets[s] || 0) + (+v || 0); ensureAsset(s); }
-      state.apiBal[a.id] = { ts: Date.now(), assets };
-      for (const p of data.positions || []) derivs.push({ ...p, acc: a.id, exchange: p.exchange || ex });
-      for (const w of data.warnings || []) errs.push((EXCH[ex] || ex) + ': ' + w);
+    const before = clone(state), errs = []; let structural = false;
+    try {
+      const r = await api('/balances', { timeout: 30000 });
+      const derivs = [];
+      for (const [ex, data] of Object.entries(r.exchanges || {})) {
+        let a = state.accounts.find(x => x.api === ex);
+        if (!a) { a = { id: 'a_api_' + ex, name: EXCH[ex] || ex, kind: 'exchange', inst: EXCH[ex] || ex, currency: 'EUR', api: ex, reportsSpain: ex === 'binance' }; state.accounts.push(a); structural = true; }
+        const assets = {}; for (const [k, v] of Object.entries(data.assets || {})) { const s = normAsset(k); assets[s] = (assets[s] || 0) + (+v || 0); ensureAsset(s); }
+        state.apiBal[a.id] = { ts: Date.now(), assets };
+        for (const p of data.positions || []) derivs.push({ ...p, acc: a.id, exchange: p.exchange || ex });
+        for (const w of data.warnings || []) errs.push((EXCH[ex] || ex) + ': ' + w);
+      }
+      for (const [ex, e] of Object.entries(r.errors || {})) errs.push((EXCH[ex] || ex) + ': ' + e);
+      state.apiDerivs = derivs;
+    } catch (exErr) {
+      errs.push(exErr.message);
     }
-    for (const [ex, e] of Object.entries(r.errors || {})) errs.push((EXCH[ex] || ex) + ': ' + e);
-    state.apiDerivs = derivs; state.apiErrors = errs; state.apiTs = Date.now();
+    state.apiTs = Date.now();
     if (structural) { stampChanges(before); save(); } else save(false);
     await syncOnChainWallets(false);
     const bankRes = await syncConnectedBanks(false, { force: manual });
-    if (bankRes?.errors?.length) {
-      errs.push(...bankRes.errors);
-      state.apiErrors = errs;
-    }
+    if (bankRes?.errors?.length) errs.push(...bankRes.errors);
+    state.apiErrors = errs;
     await refreshPrices();
     snapshot();
     if (manual) toast(errs.length ? 'Actualizado con avisos: ' + errs.join(' · ') : 'Saldos y derivados actualizados');
@@ -141,7 +145,7 @@ async function openBankConnectModal() {
       ? '<p class="ch-note">Finanzas soporta conexión bancaria oficial PSD2 mediante <b>Enable Banking</b> (compatible con <b>Banco Santander, Revolut, BBVA, CaixaBank, ING, Sabadell, N26 y +2.500 bancos europeos</b>).</p>'
         + '<div class="callout">Guarda tu <code>ENABLE_BANKING_APP_ID</code> y <code>ENABLE_BANKING_PRIVATE_KEY</code> directamente desde el Centro de conexiones sin salir de la app.</div>'
         + '<div class="row ch-actions">' + btn('Configurar PSD2 en la app', 'id="eb-go-hub"', 'primary') + btn('Subir Excel / CSV mientras tanto', 'data-act="import"') + '</div>'
-      : '<p class="ch-note">Elige el país y tu entidad para autorizar acceso oficial PSD2 de <b>solo lectura</b> durante 90 días (Santander, Revolut, BBVA, CaixaBank, ING, Sabadell, N26 y +2.500 bancos).</p>'
+      : '<p class="ch-note">Elige el país y tu entidad para autorizar acceso oficial PSD2 de <b>solo lectura</b> durante hasta 180 días (el máximo legal PSD2 que permite tu banco: Santander, Revolut, BBVA, CaixaBank, ING, Sabadell, N26 y +2.500 bancos).</p>'
         + '<div class="form"><label class="f ch-field"><span class="ch-label">País</span><select id="eb-country" class="ch-input"><option value="ES" selected>España (ES)</option><option value="LT">Lituania · Revolut (LT)</option><option value="DE">Alemania · N26 (DE)</option><option value="IE">Irlanda (IE)</option><option value="FR">Francia (FR)</option><option value="PT">Portugal (PT)</option><option value="IT">Italia (IT)</option><option value="NL">Países Bajos (NL)</option></select></label><label class="f ch-field"><span class="ch-label">Buscar entidad</span><input type="search" id="eb-filter" class="ch-input" placeholder="Santander, Revolut, BBVA, CaixaBank, ING…"></label></div>'
         + '<div id="eb-list" class="ch-bank-list"><p class="muted">Cargando bancos autorizados…</p></div>');
   if (!hasEB && $('eb-go-hub')) {
@@ -156,9 +160,12 @@ async function openBankConnectModal() {
         const paintList = () => {
           const q = val('eb-filter').toLowerCase();
           const list = all.filter(x => !q || String(x.name || '').toLowerCase().includes(q)).slice(0, 40);
-          $('eb-list').innerHTML = list.length ? list.map(b => '<button type="button" class="account-line ch-bank-item" data-eb-name="' + esc(b.name) + '" data-eb-country="' + esc(b.country || c) + '"><span class="account-mark">' + ico('bank') + '</span><span><b>' + esc(b.name) + '</b><small>' + esc(b.country || c) + ' · PSD2</small></span><span class="tag brand">Autorizar →</span></button>').join('') : '<p class="muted">Ningún banco coincide con el filtro.</p>';
+          $('eb-list').innerHTML = list.length ? list.map(b => {
+            const maxDays = +b.maximum_consent_validity ? Math.round(+b.maximum_consent_validity / 86400) : 0;
+            return '<button type="button" class="account-line ch-bank-item" data-eb-name="' + esc(b.name) + '" data-eb-country="' + esc(b.country || c) + '" data-eb-max-valid="' + esc(b.maximum_consent_validity || '') + '"><span class="account-mark">' + ico('bank') + '</span><span><b>' + esc(b.name) + '</b><small>' + esc(b.country || c) + ' · PSD2' + (maxDays ? ' · hasta ' + maxDays + ' días' : '') + '</small></span><span class="tag brand">Autorizar →</span></button>';
+          }).join('') : '<p class="muted">Ningún banco coincide con el filtro.</p>';
           $$('[data-eb-name]', $('eb-list')).forEach(btnEl => {
-            btnEl.onclick = () => startBankAuth(btnEl.dataset.ebName, btnEl.dataset.ebCountry);
+            btnEl.onclick = () => startBankAuth(btnEl.dataset.ebName, btnEl.dataset.ebCountry, +btnEl.dataset.ebMaxValid || 0);
           });
         };
         $('eb-filter').oninput = paintList;
@@ -170,20 +177,19 @@ async function openBankConnectModal() {
   }
 }
 
-async function startBankAuth(aspspName, country) {
+async function startBankAuth(aspspName, country, maxValidSec = 0) {
   try {
     toast('Preparando autorización oficial con ' + aspspName + '…');
     const redirectUrl = location.origin + location.pathname;
     const st = 'eb_' + uid();
     sessionStorage.setItem('eb_pending', JSON.stringify({ state: st, aspspName, country }));
-    const r = await api('/bank/auth', { method: 'POST', body: JSON.stringify({ aspspName, country, redirectUrl, state: st }) });
+    const r = await api('/bank/auth', { method: 'POST', body: JSON.stringify({ aspspName, country, redirectUrl, state: st, maxValidSec: +maxValidSec || 0 }) });
     if (r.url) location.href = r.url;
     else throw new Error('No se recibió URL de autorización del banco.');
   } catch (e) { toast('Open Banking: ' + e.message); }
 }
 
 const normIban = s => String(s || '').replace(/\s+/g, '').toUpperCase();
-let lastBankSyncAt = 0;
 
 async function handleBankCallback() {
   const sp = new URLSearchParams(location.search);
@@ -216,9 +222,16 @@ async function handleBankCallback() {
 async function syncConnectedBanks(manual = false, opts = {}) {
   const ebAccs = state.accounts.filter(a => a.ebUid);
   if (!ebAccs.length || !workerEndpoints().length) return { updated: 0, added: 0, errors: [] };
-  if (!manual && !opts.force && lastBankSyncAt && Date.now() - lastBankSyncAt < 3 * 60e3) return { updated: 0, added: 0, errors: [] };
+  const force = !!(manual || opts.force);
+  const now = Date.now();
+  const dueAccs = force ? ebAccs : ebAccs.filter(a => {
+    const last = Math.max(a.ebBalTs || 0, a.ebSyncAttemptTs || 0);
+    const wait = a.ebLastError ? 10 * 60e3 : 30 * 60e3;
+    return !last || (now - last) >= wait;
+  });
+  if (!dueAccs.length) return { updated: 0, added: 0, errors: [] };
   try {
-    const r = await api('/bank/sync', { method: 'POST', timeout: 30000, body: JSON.stringify({ accounts: ebAccs.map(a => ({ uid: a.ebUid, currency: a.currency || 'EUR' })), dateFrom: addDays(today(), -60) }) });
+    const r = await api('/bank/sync', { method: 'POST', timeout: 30000, body: JSON.stringify({ accounts: dueAccs.map(a => ({ uid: a.ebUid, currency: a.currency || 'EUR' })), dateFrom: addDays(today(), -60) }) });
     let added = 0, updated = 0, structural = false;
     const bankErrs = [];
     const before = clone(state);
@@ -227,6 +240,7 @@ async function syncConnectedBanks(manual = false, opts = {}) {
       const a = m && state.accounts.find(x => x.ebUid === m[1]);
       const msg = m ? m[2] : String(rawErr || 'Error desconocido');
       if (a) {
+        a.ebSyncAttemptTs = Date.now();
         if ((a.ebLastError || '') !== msg) { a.ebLastError = msg; structural = true; }
         bankErrs.push(a.name + ': ' + msg);
       } else {
@@ -236,6 +250,7 @@ async function syncConnectedBanks(manual = false, opts = {}) {
     const seenKey = new Set(state.tx.map(txKey));
     for (const res of r.accounts || []) {
       const a = state.accounts.find(x => x.ebUid === res.uid); if (!a) continue;
+      a.ebSyncAttemptTs = Date.now();
       const warnMsg = (res.warnings || []).join(' · ');
       if ((a.ebLastError || '') !== warnMsg) { a.ebLastError = warnMsg; structural = true; }
       for (const w of res.warnings || []) bankErrs.push(a.name + ': ' + w);
@@ -272,7 +287,6 @@ async function syncConnectedBanks(manual = false, opts = {}) {
       });
     }
     if (structural) { stampChanges(before); save(); } else save(false);
-    lastBankSyncAt = Date.now();
     snapshot();
     if (manual) {
       const ebPrefix = new RegExp('^(' + ebAccs.map(a => a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + '):');
@@ -283,6 +297,8 @@ async function syncConnectedBanks(manual = false, opts = {}) {
     }
     return { updated, added, errors: bankErrs };
   } catch (e) {
+    dueAccs.forEach(a => { a.ebSyncAttemptTs = Date.now(); });
+    save(false);
     if (manual) toast('Bancos PSD2: ' + e.message);
     return { updated: 0, added: 0, errors: ['Bancos PSD2: ' + e.message] };
   }

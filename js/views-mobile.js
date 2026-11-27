@@ -164,7 +164,8 @@ function vCuentasMobile() {
     return head('Cuentas', 'Conecta bancos, exchanges y wallets', btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'primary small'))
       + '<div class="panel"><div class="empty"><b>Sin cuentas</b>Pulsa Conectar para empezar.</div></div>';
   }
-  return head('Cuentas', money(nw.total, { d: 0 }) + ' en ' + state.accounts.length + ' cuentas', btn(ico('plus') + 'Manual', 'data-act="add-acc"', 'small') + btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'primary small'))
+  const hasAuto = workerEndpoints().length && state.accounts.some(a => a.api || a.ebUid || a.address);
+  return head('Cuentas', money(nw.total, { d: 0 }) + ' en ' + state.accounts.length + ' cuentas', (hasAuto ? btn(ico('sync'), 'data-act="refresh" aria-label="Sincronizar cuentas"', 'ghost iconbtn') : '') + btn(ico('plus') + 'Manual', 'data-act="add-acc"', 'small') + btn(ico('link') + 'Conectar', 'data-act="connect-hub"', 'primary small'))
     + '<div class="acc-mobile-list">' + state.accounts.slice().sort((a, b) => accValue(b, nw.rows) - accValue(a, nw.rows)).map(a => accCard(a, nw.rows)).join('') + '</div>';
 }
 

@@ -375,6 +375,33 @@ try {
   assert.equal(j.accounts[1].warnings.length, 1);
   assert.match(j.accounts[1].warnings[0], /429|límite temporal/i);
   assert.deepEqual(ebHeadersSeen[0], { ip: '203.0.113.42', ua: 'FinanzasTest/1.0' });
+
+  // Enable Banking /bank/auth: consent up to 180 days (maxValidSec or /aspsps lookup)
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.includes('/aspsps?country=ES')) {
+      return new Response(JSON.stringify({ aspsps: [{ name: 'Santander', country: 'ES', maximum_consent_validity: 15552000 }] }), { status: 200 });
+    }
+    if (u.endsWith('/auth')) {
+      const body = JSON.parse(init.body);
+      const days = (Date.parse(body.access.valid_until) - Date.now()) / 864e5;
+      assert.equal(days > 179 && days <= 180, true);
+      return new Response(JSON.stringify({ url: 'https://bank.example/auth', valid_until: body.access.valid_until }), { status: 200 });
+    }
+    throw new Error('Unexpected fetch URL in /bank/auth test: ' + u);
+  };
+  r = await worker.fetch(new Request('https://worker.test/bank/auth', {
+    method: 'POST',
+    headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ aspspName: 'Santander', country: 'ES', redirectUrl: 'https://usuario.github.io/Finanzas/', maxValidSec: 15552000 })
+  }), envEbSync);
+  assert.equal(r.status, 200);
+  r = await worker.fetch(new Request('https://worker.test/bank/auth', {
+    method: 'POST',
+    headers: { Origin: env.ALLOWED_ORIGIN, 'X-Caudal-Token': env.TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ aspspName: 'Santander', country: 'ES', redirectUrl: 'https://usuario.github.io/Finanzas/' })
+  }), envEbSync);
+  assert.equal(r.status, 200);
 } finally {
   globalThis.fetch = origFetch;
 }
